@@ -1,0 +1,9 @@
+name: smort_cars
+channels:
+  - defaults
+dependencies:
+  - pip
+  - python=3
+  - pystan
+  - git
+  - swig
