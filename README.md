@@ -2,23 +2,20 @@
 Crashing now so we don't crash later. Reinforcement Learning and self driving cars.
 
 # Installation
-## On Windows:
+## On Windows: UNDER CONSTRUCTION
+
+## On Linux: 
 ### Install Conda 
 https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html 
 
-### Create Conda Environment 
+### Create Conda Environment and Install System Dependencies
 ```
-conda env create -f environment.yml
+sudo make install_sys
 ```
 
-### Activate and Install Dependencies
+### Activate and Install Pip Dependencies
 ```
 conda activate smort_cars
-pip install -r requirements.txt
+make install_dep
 ```
 
-## On Linux:
-### Install System Dependencies
-```
-make install
-```

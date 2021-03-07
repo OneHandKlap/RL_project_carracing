@@ -1,85 +1,9 @@
-aiohttp==3.7.3
-argcomplete==1.12.2
-arviz @ file:///tmp/build/80754af9/arviz_1614019183254/work
-astroid==2.3.2
-async-timeout==3.0.1
-autopep8==1.4.4
-backcall==0.2.0
-bokeh==2.2.3
-Box2D==2.3.10
+box2d-py==2.3.8
 certifi==2020.12.5
-cffi==1.14.5
-cftime @ file:///C:/ci/cftime_1613248414849/work
-click==7.1.2
 cloudpickle==1.6.0
-colorama==0.4.1
-cycler==0.10.0
-Cython @ file:///C:/ci/cython_1614014958194/work
-decorator==4.4.2
-Flask==1.1.2
 future==0.18.2
-geojson==2.5.0
-glfw==2.1.0
 gym==0.18.0
-imageio==2.9.0
-ipython==7.19.0
-ipython-genutils==0.2.0
-isort==4.3.21
-itsdangerous==1.1.0
-jedi==0.17.2
-Jinja2==2.11.2
-kaggle==1.5.10
-kiwisolver==1.3.1
-lazy-object-proxy==1.4.3
-livelossplot==0.5.3
-lockfile==0.12.2
-MarkupSafe==1.1.1
-matplotlib==3.3.3
-mccabe==0.6.1
-mkl-fft==1.3.0
-mkl-random==1.1.1
-mkl-service==2.3.0
-multidict==5.1.0
-netCDF4 @ file:///C:/ci/netcdf4_1613684374643/work
 numpy==1.20.1
-olefile==0.46
-opencv-python==4.5.1.48
-packaging==20.4
-pandas @ file:///C:/ci/pandas_1613684935103/work
-parso==0.7.1
-pickleshare==0.7.5
 Pillow==7.2.0
-pipx==0.16.0.0
-prompt-toolkit==3.0.8
-pycodestyle==2.5.0
-pycparser==2.20
-pyee==7.0.4
 pyglet==1.5.0
-pylint==2.4.3
-pyowm==3.1.1
-pyparsing==2.4.7
-PySocks==1.7.1
-pystan==2.19.1.1
-python-dateutil==2.8.1
-python-dotenv==0.15.0
-python-slugify==4.0.1
-pytz @ file:///tmp/build/80754af9/pytz_1612215392582/work
-PyYAML==5.3.1
 scipy==1.6.1
-six==1.12.0
-slack==0.0.2
-slackclient==2.9.3
-slackeventsapi==2.2.1
-speedtest-cli==2.1.2
-text-unidecode==1.3
-tornado==6.1
-tqdm==4.54.1
-traitlets==5.0.5
-typing-extensions==3.7.4.3
-userpath==1.4.2
-wcwidth==0.2.5
-Werkzeug==1.0.1
-wincertstore==0.2
-wrapt==1.11.2
-xarray @ file:///tmp/build/80754af9/xarray_1614625053385/work
-yarl==1.6.3
