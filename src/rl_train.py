@@ -79,7 +79,7 @@ class ReplayMemory(object):
 BATCH_SIZE = 128
 MEMORY_CAPACITY = 10000
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 100
+MAX_EPISODE _TIME = 1000
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -203,8 +203,6 @@ class RL_Model():
         self.optimizer.step()
 
     def train(self, num_episodes=NUM_TRAINING_EPISODES):
-        # reset training variables
-        self.steps_taken = 0
 
         for i_ep in range(num_episodes):
             print("TRAINING ON EPISODE: " + str(i_ep))
@@ -271,7 +269,6 @@ class RL_Model():
 
                     if(done):
                         break
-
         return True
 
 
@@ -283,13 +280,6 @@ d_actions = list(discrete_action_space.values())
 
 model = RL_Model(env, DQN, d_actions)
 
-model.train(1)
-
-model.generate_policy_video()
-
-
-# env.reset()
-# for _ in range(1000):
-#    env.render()
-#    env.step(env.action_space.sample())  # take a random action
-# env.close()
+for i in range(10):
+    model.train(2)
+    model.generate_policy_video("rl_progress_ep_" + str(i * 2))
