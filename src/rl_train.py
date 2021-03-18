@@ -79,7 +79,7 @@ class ReplayMemory(object):
 BATCH_SIZE = 128
 MEMORY_CAPACITY = 10000
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE _TIME = 1000
+MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -129,6 +129,30 @@ class RL_Model():
 
         # variables for training
         self.steps_taken = 0
+
+    # load policy-net weights
+    def load(self, path="rl_model_weights.pth"):
+        checkpoint = torch.load(path)
+        # policy net
+        self.policy.load_state_dict(checkpoint['model_state_dict'])
+        self.policy.eval()
+
+        # target net
+        self.target.load_state_dict(self.policy.state_dict())
+        self.target.eval()
+
+        # optimizer
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+    # save policy-net weights
+    def save(self, path="rl_model_weights"):
+        torch.save({
+            # 'epoch': epoch,
+            'model_state_dict': self.policy.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            # 'loss': loss,
+        },
+            path + ".pth")
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
@@ -280,6 +304,6 @@ d_actions = list(discrete_action_space.values())
 
 model = RL_Model(env, DQN, d_actions)
 
-for i in range(10):
-    model.train(2)
-    model.generate_policy_video("rl_progress_ep_" + str(i * 2))
+# for i in range(10):
+#    model.train(2)
+#    model.generate_policy_video("rl_progress_ep_" + str(i * 2))
