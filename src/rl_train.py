@@ -15,6 +15,7 @@ import torch.optim as optim
 import imageio
 import base64
 
+'''
 from pyvirtualdisplay import Display
 display = Display(visible=0, size=(1400, 900))
 display.start()
@@ -24,7 +25,7 @@ if is_ipython:
     from IPython import display
 
 plt.ion()
-
+'''
 
 resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
@@ -75,11 +76,21 @@ class ReplayMemory(object):
         """Saves a transition."""
         if len(self.memory) < self.capacity:
             self.memory.append(None)
+        # if len(self.memory) > self.capacity:
+        #    self.clear()
+        #    self.memory.append(None)
+
         self.memory[self.position] = Transition(*args)
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)
+
+    def clear(self):
+        self.position = 0
+        for m in self.memory:
+            del m
+        del self.memory
 
     def __len__(self):
         return len(self.memory)
@@ -87,7 +98,7 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 10000
+MEMORY_CAPACITY = 1000
 NUM_TRAINING_EPISODES = 50
 MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
@@ -314,6 +325,8 @@ d_actions = list(discrete_action_space.values())
 
 model = RL_Model(env, DQN, d_actions)
 
-# for i in range(10):
-#    model.train(2)
-#    model.generate_policy_video("rl_progress_ep_" + str(i * 2))
+model.generate_policy_video("rl_progress_ep_" + str(0))
+
+for i in range(1, 11):
+    model.train(40)
+    model.generate_policy_video("rl_progress_ep_" + str(i*40))
