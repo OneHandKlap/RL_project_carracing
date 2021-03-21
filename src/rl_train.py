@@ -132,6 +132,9 @@ class RL_Model():
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
+
+        screen = (screen[np.ix_([x for x in range(100,400)],[x for x in range(200,400)])])
+
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
