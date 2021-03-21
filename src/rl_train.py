@@ -4,6 +4,7 @@ import gc
 import numpy as np
 import torch.nn as nn
 import gym
+import gc
 from collections import namedtuple
 from itertools import count
 import random
@@ -191,6 +192,8 @@ class RL_Model():
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
+        screen = screen[np.ix_([x for x in range(100, 400)], [
+                               x for x in range(200, 400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
@@ -209,6 +212,10 @@ class RL_Model():
                 return self.policy(state).max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long).detach()
+
+    def select_deterministic_action(self, state):
+        with torch.no_grad():
+            return self.policy(state).max(1)[1].view(1, 1)
 
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
@@ -337,16 +344,18 @@ class RL_Model():
                 time_step = self.env.reset()
                 done = False
                 video.append_data(self.env.render(mode="rgb_array"))
+                last_screen = self.get_screen()
+                current_screen = self.get_screen()
+                state = current_screen - last_screen
 
                 for i in range(max_episode_time):
-                    last_screen = self.get_screen()
-                    current_screen = self.get_screen()
-                    state = current_screen - last_screen
-
-                    action = self.select_action(state)
+                    action = self.select_deterministic_action(state)
                     _, _, done, _ = self.env.step(
                         self.action_space[action.item()])
                     video.append_data(self.env.render(mode="rgb_array"))
+                    last_screen = current_screen
+                    current_screen = self.get_screen()
+                    state = current_screen-last_screen
 
                     if(done):
                         break
