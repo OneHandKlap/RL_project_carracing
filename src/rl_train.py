@@ -79,7 +79,7 @@ class ReplayMemory(object):
 BATCH_SIZE = 128
 MEMORY_CAPACITY = 10000
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE _TIME = 1000
+MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -98,8 +98,8 @@ class RL_Model():
         self.env = env
 
         # if gpu is to be used
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cpu")
+        print(self.device)
 
         # initialize screen and nn
         self.env.reset()
@@ -214,7 +214,7 @@ class RL_Model():
             state = current_screen - last_screen
 
             for t in count():
-                # print(t)
+                #print(t)
                 # plt.imshow(self.get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation = 'none')
                 # plt.draw()
                 # plt.pause(1e-3)
@@ -274,12 +274,11 @@ class RL_Model():
 
 env = gym.make('CarRacing-v0').unwrapped
 
-discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1,
-                                                                                                        1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
+discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1,1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
 d_actions = list(discrete_action_space.values())
 
 model = RL_Model(env, DQN, d_actions)
 
-for i in range(10):
+for i in range(2):
     model.train(2)
     model.generate_policy_video("rl_progress_ep_" + str(i * 2))
