@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import gym
+import gc
 from collections import namedtuple
 from itertools import count
 import random
@@ -14,6 +15,8 @@ import torchvision.transforms as T
 import torch.optim as optim
 import imageio
 import base64
+from pytorch_memlab import MemReporter
+
 
 '''
 from pyvirtualdisplay import Display
@@ -98,7 +101,7 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 1000
+MEMORY_CAPACITY = 5
 NUM_TRAINING_EPISODES = 50
 MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
@@ -177,6 +180,7 @@ class RL_Model():
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
+        screen = screen[np.ix_([x for x in range(100,400)],[x for x in range(200,400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
@@ -195,6 +199,11 @@ class RL_Model():
                 return self.policy(state).max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long)
+
+    def select_deterministic_action(self,state):
+        with torch.no_grad():
+            return self.policy(state).max(1)[1].view(1,1)
+
 
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
@@ -247,10 +256,20 @@ class RL_Model():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
+        del non_final_mask
+        del non_final_next_states
+        del state_batch
+        del action_batch
+        del reward_batch
+        del loss
+
     def train(self, num_episodes=NUM_TRAINING_EPISODES):
+        reporter=MemReporter()
 
         for i_ep in range(num_episodes):
             print("TRAINING ON EPISODE: " + str(i_ep))
+            print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
+            print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
 
             # reset env and state
             self.env.reset()
@@ -267,7 +286,7 @@ class RL_Model():
                 action = self.select_action(state)
                 _, reward, done, _ = self.env.step(
                     self.action_space[action.item()])
-                reward = torch.tensor([reward], device=self.device)
+                reward = torch.tensor([reward], device=self.device).detach()
 
                 # observe new state
                 last_screen = current_screen
@@ -294,6 +313,17 @@ class RL_Model():
             if i_ep % TARGET_UPDATE == 0:
                 self.target.load_state_dict(self.policy.state_dict())
 
+            #reporter.report()
+            # for obj in gc.get_objects():
+            #     try:
+            #         if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                        
+            #             print(type(obj), obj.size())
+            #     except:
+            #         pass
+            torch.cuda.empty_cache()
+            gc.collect()
+
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
         filename = filename + ".mp4"
         with imageio.get_writer(filename, fps=fps) as video:
@@ -301,16 +331,18 @@ class RL_Model():
                 time_step = self.env.reset()
                 done = False
                 video.append_data(self.env.render(mode="rgb_array"))
+                last_screen = self.get_screen()
+                current_screen = self.get_screen()
+                state = current_screen - last_screen
 
                 for i in range(max_episode_time):
-                    last_screen = self.get_screen()
-                    current_screen = self.get_screen()
-                    state = current_screen - last_screen
-
-                    action = self.select_action(state)
-                    _, _, done, _ = self.env.step(
-                        self.action_space[action.item()])
+                    action = self.select_deterministic_action(state)
+                    _, _, done, _ = self.env.step(self.action_space[action.item()])
                     video.append_data(self.env.render(mode="rgb_array"))
+                    last_screen = current_screen
+                    current_screen = self.get_screen()
+                    state=current_screen-last_screen
+                    
 
                     if(done):
                         break
@@ -323,10 +355,25 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
                                                                                                         1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
 d_actions = list(discrete_action_space.values())
 
-model = RL_Model(env, DQN, d_actions)
 
-model.generate_policy_video("rl_progress_ep_" + str(0))
 
-for i in range(1, 11):
-    model.train(40)
-    model.generate_policy_video("rl_progress_ep_" + str(i*40))
+
+model1 = RL_Model(env, DQN, d_actions)
+model1.load("rl_model_weights_10.pth.pth")
+model1.generate_policy_video()
+
+
+
+model2=RL_Model(env,DQN,d_actions)
+model2.load("rl_model_weights_30.pth.pth")
+model1.generate_policy_video("30.mp4")
+
+# for i in range(100):
+#     last_screen = model1.get_screen()
+#     current_screen = model1.get_screen()
+#     state = current_screen - last_screen
+
+#     action1 = model1.select_deterministic_action(state)
+#     action2 = model2.select_deterministic_action(state)
+    
+#     print(action1)
