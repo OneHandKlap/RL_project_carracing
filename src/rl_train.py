@@ -1,5 +1,6 @@
 import torch
 
+import gc
 import numpy as np
 import torch.nn as nn
 import gym
@@ -14,6 +15,13 @@ import torchvision.transforms as T
 import torch.optim as optim
 import imageio
 import base64
+import psutil
+import os
+
+
+def memory_used():
+    return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
+
 
 '''
 from pyvirtualdisplay import Display
@@ -74,12 +82,12 @@ class ReplayMemory(object):
 
     def push(self, *args):
         """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        # if len(self.memory) > self.capacity:
-        #    self.clear()
+        # if len(self.memory) < self.capacity:
         #    self.memory.append(None)
+        if len(self.memory) > self.capacity:
+            self.clear()
 
+        self.memory.append(None)
         self.memory[self.position] = Transition(*args)
         self.position = (self.position + 1) % self.capacity
 
@@ -87,10 +95,12 @@ class ReplayMemory(object):
         return random.sample(self.memory, batch_size)
 
     def clear(self):
+        # print("CLEARING MEMORY")
         self.position = 0
         for m in self.memory:
             del m
         del self.memory
+        self.memory = []
 
     def __len__(self):
         return len(self.memory)
@@ -98,7 +108,7 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 1000
+MEMORY_CAPACITY = 5
 NUM_TRAINING_EPISODES = 50
 MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
@@ -106,6 +116,7 @@ EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 200
 TARGET_UPDATE = 10
+ENV_CLEAR = 5
 
 # RL Model Class for Training and Testing
 
@@ -114,9 +125,12 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space):
+    def __init__(self, env, nn, action_space, env_string=None):
         # set env
         self.env = env
+        if env_string:
+            self.env_string = env_string
+            self.env = gym.make(env_string).unwrapped
 
         # if gpu is to be used
         self.device = torch.device(
@@ -194,7 +208,7 @@ class RL_Model():
                 # found, so we pick action with the larger expected reward.
                 return self.policy(state).max(1)[1].view(1, 1)
         else:
-            return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long)
+            return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long).detach()
 
     def optimize_model(self):
         if len(self.memory) < BATCH_SIZE:
@@ -247,10 +261,27 @@ class RL_Model():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
-    def train(self, num_episodes=NUM_TRAINING_EPISODES):
+        del non_final_mask
+        del non_final_next_states
+        del state_batch
+        del action_batch
+        del reward_batch
+        del loss
+        gc.collect()
 
+    def train(self, num_episodes=NUM_TRAINING_EPISODES, print_prefix="", render=False):
+        self.steps_taken = 0
         for i_ep in range(num_episodes):
-            print("TRAINING ON EPISODE: " + str(i_ep))
+            print(print_prefix + "EPISODE: " + str(i_ep))
+            print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
+            print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
+            print('Ram Used: %f' % memory_used())
+
+            # clear env
+            if i_ep % ENV_CLEAR == 0 and self.env_string:
+                self.env.close()
+                del self.env
+                self.env = gym.make(self.env_string).unwrapped
 
             # reset env and state
             self.env.reset()
@@ -259,15 +290,17 @@ class RL_Model():
             state = current_screen - last_screen
 
             for t in count():
-                # print(t)
-                # plt.imshow(self.get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation = 'none')
-                # plt.draw()
-                # plt.pause(1e-3)
+                if render:
+                    plt.imshow(self.get_screen().cpu().squeeze(
+                        0).permute(1, 2, 0).numpy(), interpolation='none')
+                    plt.draw()
+                    plt.pause(1e-3)
+
                 # select an action from the state
                 action = self.select_action(state)
                 _, reward, done, _ = self.env.step(
                     self.action_space[action.item()])
-                reward = torch.tensor([reward], device=self.device)
+                reward = torch.tensor([reward], device=self.device).detach()
 
                 # observe new state
                 last_screen = current_screen
@@ -294,6 +327,9 @@ class RL_Model():
             if i_ep % TARGET_UPDATE == 0:
                 self.target.load_state_dict(self.policy.state_dict())
 
+            torch.cuda.empty_cache()
+            gc.collect()
+
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
         filename = filename + ".mp4"
         with imageio.get_writer(filename, fps=fps) as video:
@@ -317,16 +353,22 @@ class RL_Model():
         return True
 
 
-env = gym.make('CarRacing-v0').unwrapped
+# env = gym.make('CarRacing-v0').unwrapped
 
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1,
                                                                                                         1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
 d_actions = list(discrete_action_space.values())
 
-model = RL_Model(env, DQN, d_actions)
+model = RL_Model(gym.make('CarRacing-v0').unwrapped,
+                 DQN, d_actions, 'CarRacing-v0')
 
-model.generate_policy_video("rl_progress_ep_" + str(0))
+# model.generate_policy_video("rl_progress_ep_" + str(0))
 
+model.train(50)
+model.generate_policy_video("rl_progress_ep_" + str(i*50))
+
+'''
 for i in range(1, 11):
-    model.train(40)
-    model.generate_policy_video("rl_progress_ep_" + str(i*40))
+    model.train(50, render=False)
+    model.generate_policy_video("rl_progress_ep_" + str(i*50))
+'''
