@@ -71,7 +71,7 @@ class DQN(nn.Module):
             return self.head(x.view(x.size(0), -1))
         except:
             print(x)
-            return
+            return self.head(x.view(x.size(0), -1))
 
 
 Transition = namedtuple('Transition',
@@ -298,10 +298,12 @@ class RL_Model():
         plt.draw()
         plt.pause(0.001)  # pause a bit so that plots are updated
 
-    def train(self, num_episodes=NUM_TRAINING_EPISODES, print_prefix="", render=False):
+    def train(self, num_episodes=NUM_TRAINING_EPISODES, epoch=1, render=False):
         self.steps_taken = 0
+        acc_rewards = np.zeros(num_episodes)
+        plt_color = [(random.random(), random.random(), random.random())]
         for i_ep in range(1, num_episodes+1):
-            print(print_prefix + "EPISODE: " + str(i_ep))
+            print("EPOCH: " + str(epoch) + " EPISODE: " + str(i_ep))
             print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
             print('Ram Used: %f' % memory_used())
@@ -318,8 +320,6 @@ class RL_Model():
             current_screen = self.get_screen()
             state = current_screen - last_screen
 
-            acc_rewards = 0
-
             for t in count():
                 if render:
                     plt.imshow(self.get_screen().cpu().squeeze(
@@ -334,7 +334,7 @@ class RL_Model():
                 reward = torch.tensor([reward], device=self.device)
 
                 # increase acc rewards
-                acc_rewards += reward
+                acc_rewards[i_ep-1] += reward
 
                 # observe new state
                 last_screen = current_screen
@@ -367,12 +367,15 @@ class RL_Model():
             plt.ylabel('Rewards')
             plt.xticks(range(0, num_episodes+1))
             plt.scatter(torch.tensor([i_ep], dtype=torch.float), torch.tensor(
-                [acc_rewards], dtype=torch.float), c="blue")
+                [acc_rewards[i_ep-1]], dtype=torch.float), c=plt_color, label="Epoch " + str(epoch) if i_ep == 1 else '')
+            plt.legend()
             plt.draw()
             plt.pause(1e-3)
 
             torch.cuda.empty_cache()
             gc.collect()
+
+        return (range(1, num_episodes+1), acc_rewards)
 
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
         filename = filename + ".mp4"
@@ -412,6 +415,8 @@ model = RL_Model(gym.make('CarRacing-v0').unwrapped,
 
 
 for i in range(1, 11):
-    model.train(10, render=False, print_prefix="EPOCH: " + str(i) + " ")
+    ep, rewards = model.train(
+        100, render=False, epoch=i)
     model.save("rl_progress_ep_" + str(i * 100))
-    model.generate_policy_video("rl_progress_ep_" + str(i*10))
+    model.generate_policy_video("rl_progress_ep_" + str(i*100))
+plt.savefig("rl_progress_plt.png")
