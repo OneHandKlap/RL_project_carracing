@@ -64,10 +64,14 @@ class DQN(nn.Module):
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        return self.head(x.view(x.size(0), -1))
+        try:
+            x = F.relu(self.bn1(self.conv1(x)))
+            x = F.relu(self.bn2(self.conv2(x)))
+            x = F.relu(self.bn3(self.conv3(x)))
+            return self.head(x.view(x.size(0), -1))
+        except:
+            print(x)
+            return
 
 
 Transition = namedtuple('Transition',
@@ -83,12 +87,12 @@ class ReplayMemory(object):
 
     def push(self, *args):
         """Saves a transition."""
-        # if len(self.memory) < self.capacity:
-        #    self.memory.append(None)
-        if len(self.memory) > self.capacity:
-            self.clear()
+        if len(self.memory) < self.capacity:
+            self.memory.append(None)
+        # if len(self.memory) > self.capacity:
+        #    self.clear()
 
-        self.memory.append(None)
+        # self.memory.append(None)
         self.memory[self.position] = Transition(*args)
         self.position = (self.position + 1) % self.capacity
 
@@ -109,7 +113,7 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 5
+MEMORY_CAPACITY = 1000
 NUM_TRAINING_EPISODES = 50
 MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
@@ -211,7 +215,7 @@ class RL_Model():
                 # found, so we pick action with the larger expected reward.
                 return self.policy(state).max(1)[1].view(1, 1)
         else:
-            return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long).detach()
+            return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long)
 
     def select_deterministic_action(self, state):
         with torch.no_grad():
@@ -268,17 +272,17 @@ class RL_Model():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
-        del non_final_mask
-        del non_final_next_states
-        del state_batch
-        del action_batch
-        del reward_batch
-        del loss
-        gc.collect()
+        #del non_final_mask
+        #del non_final_next_states
+        #del state_batch
+        #del action_batch
+        #del reward_batch
+        #del loss
+        # gc.collect()
 
     def train(self, num_episodes=NUM_TRAINING_EPISODES, print_prefix="", render=False):
         self.steps_taken = 0
-        for i_ep in range(num_episodes):
+        for i_ep in range(1, num_episodes+1):
             print(print_prefix + "EPISODE: " + str(i_ep))
             print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
@@ -307,7 +311,7 @@ class RL_Model():
                 action = self.select_action(state)
                 _, reward, done, _ = self.env.step(
                     self.action_space[action.item()])
-                reward = torch.tensor([reward], device=self.device).detach()
+                reward = torch.tensor([reward], device=self.device)
 
                 # observe new state
                 last_screen = current_screen
@@ -373,11 +377,8 @@ model = RL_Model(gym.make('CarRacing-v0').unwrapped,
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
-model.train(50)
-model.generate_policy_video("rl_progress_ep_" + str(i*50))
 
-'''
 for i in range(1, 11):
-    model.train(50, render=False)
-    model.generate_policy_video("rl_progress_ep_" + str(i*50))
-'''
+    model.train(10, render=False, print_prefix="EPOCH: " + str(i) + " ")
+    model.save("rl_progress_ep_" + str(i * 100))
+    model.generate_policy_video("rl_progress_ep_" + str(i*10))
