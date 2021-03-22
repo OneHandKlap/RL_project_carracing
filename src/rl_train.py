@@ -170,6 +170,8 @@ class RL_Model():
         # variables for training
         self.steps_taken = 0
 
+        self.episode_durations = []
+
     # load policy-net weights
     def load(self, path="rl_model_weights.pth"):
         checkpoint = torch.load(path)
@@ -272,13 +274,29 @@ class RL_Model():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
-        #del non_final_mask
-        #del non_final_next_states
-        #del state_batch
-        #del action_batch
-        #del reward_batch
-        #del loss
+        # del non_final_mask
+        # del non_final_next_states
+        # del state_batch
+        # del action_batch
+        # del reward_batch
+        # del loss
         # gc.collect()
+
+    def plot_durations(self):
+        plt.figure(2)
+        plt.clf()
+        durations_t = torch.tensor(self.episode_durations, dtype=torch.float)
+        plt.title('Training...')
+        plt.xlabel('Episode')
+        plt.ylabel('Duration')
+        plt.plot(durations_t.numpy())
+        # Take 100 episode averages and plot them too
+        if len(durations_t) >= 100:
+            means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+            means = torch.cat((torch.zeros(99), means))
+            plt.plot(means.numpy())
+        plt.draw()
+        plt.pause(0.001)  # pause a bit so that plots are updated
 
     def train(self, num_episodes=NUM_TRAINING_EPISODES, print_prefix="", render=False):
         self.steps_taken = 0
@@ -300,6 +318,8 @@ class RL_Model():
             current_screen = self.get_screen()
             state = current_screen - last_screen
 
+            acc_rewards = 0
+
             for t in count():
                 if render:
                     plt.imshow(self.get_screen().cpu().squeeze(
@@ -312,6 +332,9 @@ class RL_Model():
                 _, reward, done, _ = self.env.step(
                     self.action_space[action.item()])
                 reward = torch.tensor([reward], device=self.device)
+
+                # increase acc rewards
+                acc_rewards += reward
 
                 # observe new state
                 last_screen = current_screen
@@ -337,6 +360,16 @@ class RL_Model():
             # Update target network, copy all weights and biases
             if i_ep % TARGET_UPDATE == 0:
                 self.target.load_state_dict(self.policy.state_dict())
+
+            # plot
+            plt.title('Rewards Over Episode')
+            plt.xlabel('Episode')
+            plt.ylabel('Rewards')
+            plt.xticks(range(0, num_episodes+1))
+            plt.scatter(torch.tensor([i_ep], dtype=torch.float), torch.tensor(
+                [acc_rewards], dtype=torch.float), c="blue")
+            plt.draw()
+            plt.pause(1e-3)
 
             torch.cuda.empty_cache()
             gc.collect()
