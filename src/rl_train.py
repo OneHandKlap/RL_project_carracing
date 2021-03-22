@@ -339,10 +339,10 @@ class RL_Model():
                 # observe new state
                 last_screen = current_screen
                 current_screen = self.get_screen()
-                if not done:
-                    next_state = current_screen - last_screen
-                else:
-                    next_state = None
+                # if not done:
+                next_state = current_screen - last_screen
+                # else:
+                #    next_state = None
 
                 # Store the transition in memory
                 self.memory.push(state, action, next_state, reward)
@@ -367,7 +367,7 @@ class RL_Model():
             plt.ylabel('Rewards')
             plt.xticks(range(0, num_episodes+1))
             plt.scatter(torch.tensor([i_ep], dtype=torch.float), torch.tensor(
-                [acc_rewards[i_ep-1]], dtype=torch.float), c=plt_color, label="Epoch " + str(epoch) if i_ep == 1 else '')
+                [max(acc_rewards[i_ep-1], -1000)], dtype=torch.float), c=plt_color, label="Epoch " + str(epoch) if i_ep == 1 else '')
             plt.legend()
             plt.draw()
             plt.pause(1e-3)
