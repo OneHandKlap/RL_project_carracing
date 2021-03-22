@@ -113,7 +113,7 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 1000
+MEMORY_CAPACITY = 7000
 NUM_TRAINING_EPISODES = 50
 MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
@@ -365,8 +365,8 @@ class RL_Model():
             plt.title('Rewards Over Episode')
             plt.xlabel('Episode')
             plt.ylabel('Rewards')
-            plt.xticks(range(0, num_episodes+1))
-            plt.scatter(torch.tensor([i_ep], dtype=torch.float), torch.tensor(
+            plt.xticks(range(1, epoch * (num_episodes+1)))
+            plt.scatter(torch.tensor([i_ep + (epoch - 1) * num_episodes], dtype=torch.float), torch.tensor(
                 [max(acc_rewards[i_ep-1], -1000)], dtype=torch.float), c=plt_color, label="Epoch " + str(epoch) if i_ep == 1 else '')
             plt.legend()
             plt.draw()
@@ -416,7 +416,7 @@ model = RL_Model(gym.make('CarRacing-v0').unwrapped,
 
 for i in range(1, 11):
     ep, rewards = model.train(
-        100, render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 100))
-    model.generate_policy_video("rl_progress_ep_" + str(i*100))
+        50, render=False, epoch=i)
+    model.save("rl_progress_ep_" + str(i * 50))
+    model.generate_policy_video("rl_progress_ep_" + str(i*50))
 plt.savefig("rl_progress_plt.png")
