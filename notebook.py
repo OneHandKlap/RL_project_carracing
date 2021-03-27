@@ -529,27 +529,32 @@ class RL_Model():
 
             torch.cuda.empty_cache()
             gc.collect()
-
-        return (range(1, num_episodes+1), acc_rewards)
-
-    def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
-        filename = filename + ".mp4"
+        
         def remove_outliers(x, constant):
             a = np.array(x)
             upper_quartile = np.percentile(a, 75)
             lower_quartile = np.percentile(a, 25)
             IQR = (upper_quartile - lower_quartile) * constant
-            quartileSet = (lower_quartile - IQR, upper_quartile + IQR)
+            quartile_set = (lower_quartile - IQR, upper_quartile + IQR)
             resultList = []
-            print(quartileSet)
+
             for y in a.tolist():
-                if y >= quartileSet[0] and y <= quartileSet[1]:
+                if y >= quartile_set[0] and y <= quartile_set[1]:
                     resultList.append(y)
+                else:
+                    resultList.append(0)
             return resultList
 
-        test=[-80,-74,-55,-21,70,100,-95,-3000]
+        return (range(1, num_episodes+1), remove_outliers(acc_rewards,1.3))
+
+    def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
+        filename = filename + ".mp4"
+
+        
+
+
         with imageio.get_writer(filename, fps=fps) as video:
-            episode_rewards_acc=[]
+
             for episode in range(num_episodes):
                 time_step = self.env.reset()
                 done = False
@@ -558,7 +563,7 @@ class RL_Model():
                 current_screen = self.get_screen()
                 state = current_screen - last_screen
                 
-                total_rewards=0
+
                 for i in range(max_episode_time):
                     action = self.select_deterministic_action(state)
                     #action = self.select_action(state)
@@ -568,13 +573,12 @@ class RL_Model():
                     last_screen = current_screen
                     current_screen = self.get_screen()
                     state = current_screen-last_screen
-                    total_rewards+=reward
+
 
                     if(done):
                         break
-                episode_rewards_acc.append(total_rewards)
-            print((remove_outliers(test,.2)))
-            print(test)
+
+
         return True
 
 
@@ -593,9 +597,15 @@ model = RL_Model(gym.make('CarRacing-v0').unwrapped,
 # %%
 for i in range(1, 20):
     ep, rewards = model.train(
-        1, render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 1))
-    model.generate_policy_video("rl_progress_ep_" + str(i*1))
+        5, render=False, epoch=i)
+    model.save("rl_progress_ep_" + str(i * 5))
+    model.generate_policy_video("rl_progress_ep_" + str(i*5))
+    plt.title('Rewards Over Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Rewards')
+    plt.scatter([x for x in range(len(rewards))], rewards)
+    plt.legend()
+    plt.savefig("rl_progress_ep_"+str(i*5))
 
 
 
