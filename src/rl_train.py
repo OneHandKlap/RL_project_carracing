@@ -452,7 +452,6 @@ class FrictionDetector(contactListener):
 
     def _contact(self, contact, begin):
         self.env.on_track = True
-        print("ON THE ROAD!")
 
         tile = None
         obj = None
@@ -480,7 +479,7 @@ class FrictionDetector(contactListener):
             obj.tiles.add(tile)
             if not tile.road_visited:
                 tile.road_visited = True
-                self.env.reward += 100  # 1000.0 / len(self.env.track)
+                self.env.reward += 1000.0 / len(self.env.track)
                 self.env.tile_visited_count += 1
         else:
             obj.tiles.remove(tile)
@@ -709,6 +708,7 @@ class RewardWrapper(gym.Wrapper):
         # print(env)
         #env._create_track = lambda: create_track(env)
         env.on_track = False
+        env.on_grass_count = 0
         env.contactListener_keepref = FrictionDetector(env)
         env.world = Box2D.b2World(
             (0, 0), contactListener=env.contactListener_keepref)
@@ -720,7 +720,14 @@ class RewardWrapper(gym.Wrapper):
         res = self.env.step(action)
 
         if not self.env.on_track:
-            print("ON GRASS")
+            self.env.on_grass_count += 1
+
+            if (self.env.on_grass_count > 3):
+                self.env.reward -= 5
+                #print("ON GRASS")
+        else:
+            #print("ON ROAD")
+            self.env.on_grass_count = 0
 
         return res
 
@@ -728,7 +735,9 @@ class RewardWrapper(gym.Wrapper):
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 # discrete_action_space.values())
-d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
+d_actions = list([discrete_action_space["go"],
+                  discrete_action_space["go_left"], discrete_action_space["go_right"]])
+
 env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
 model = RL_Model(env, DQN, d_actions)
 
@@ -737,7 +746,7 @@ model = RL_Model(env, DQN, d_actions)
 
 for i in range(1, 2):
     ep, rewards = model.train(
-        5, render=True, epoch=i)
+        5, render=False, epoch=i)
     model.save("rl_progress_ep_" + str(i * 5))
     model.generate_policy_video("rl_progress_ep_" + str(i*5))
     plt.title('Rewards Over Episode')
