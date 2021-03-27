@@ -111,11 +111,27 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
+def remove_outliers(x, constant):
+    a = np.array(x)
+    upper_quartile = np.percentile(a, 75)
+    lower_quartile = np.percentile(a, 25)
+    IQR = (upper_quartile - lower_quartile) * constant
+    quartile_set = (lower_quartile - IQR, upper_quartile + IQR)
+    resultList = []
+
+    for y in a.tolist():
+        if y >= quartile_set[0] and y <= quartile_set[1]:
+            resultList.append(y)
+        else:
+            resultList.append(0)
+    return resultList
+
+
 # Hyperparameters
 BATCH_SIZE = 128
 MEMORY_CAPACITY = 7000
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 1000
+MAX_EPISODE_TIME = 10
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -361,26 +377,17 @@ class RL_Model():
             if i_ep % TARGET_UPDATE == 0:
                 self.target.load_state_dict(self.policy.state_dict())
 
-            # plot
-            plt.title('Rewards Over Episode')
-            plt.xlabel('Episode')
-            plt.ylabel('Rewards')
-            plt.xticks(range(1, epoch * (num_episodes+1)))
-            plt.scatter(torch.tensor([i_ep + (epoch - 1) * num_episodes], dtype=torch.float), torch.tensor(
-                [max(acc_rewards[i_ep-1], -1000)], dtype=torch.float), c=plt_color, label="Epoch " + str(epoch) if i_ep == 1 else '')
-            plt.legend()
-            plt.draw()
-            plt.pause(1e-3)
-
             torch.cuda.empty_cache()
             gc.collect()
 
-        return (range(1, num_episodes+1), acc_rewards)
+        return (range(1, num_episodes+1), remove_outliers(acc_rewards, 1.3))
 
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
         filename = filename + ".mp4"
+
         with imageio.get_writer(filename, fps=fps) as video:
-            for _ in range(num_episodes):
+
+            for episode in range(num_episodes):
                 time_step = self.env.reset()
                 done = False
                 video.append_data(self.env.render(mode="rgb_array"))
@@ -390,7 +397,8 @@ class RL_Model():
 
                 for i in range(max_episode_time):
                     action = self.select_deterministic_action(state)
-                    _, _, done, _ = self.env.step(
+                    # action = self.select_action(state)
+                    _, reward, done, _ = self.env.step(
                         self.action_space[action.item()])
                     video.append_data(self.env.render(mode="rgb_array"))
                     last_screen = current_screen
@@ -399,13 +407,14 @@ class RL_Model():
 
                     if(done):
                         break
+
         return True
 
 
 # env = gym.make('CarRacing-v0').unwrapped
 
-discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1,
-                                                                                                        1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
+discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
+                                                                                                                                                                                                                                       0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 d_actions = list(discrete_action_space.values())
 
 model = RL_Model(gym.make('CarRacing-v0').unwrapped,
@@ -414,9 +423,14 @@ model = RL_Model(gym.make('CarRacing-v0').unwrapped,
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
 
-for i in range(1, 11):
+for i in range(1, 20):
     ep, rewards = model.train(
-        50, render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 50))
-    model.generate_policy_video("rl_progress_ep_" + str(i*50))
-plt.savefig("rl_progress_plt.png")
+        5, render=False, epoch=i)
+    model.save("rl_progress_ep_" + str(i * 5))
+    model.generate_policy_video("rl_progress_ep_" + str(i*5))
+    plt.title('Rewards Over Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Rewards')
+    plt.scatter([x for x in range(len(rewards))], rewards)
+    plt.legend()
+    plt.savefig("rl_progress_ep_"+str(i*5))
