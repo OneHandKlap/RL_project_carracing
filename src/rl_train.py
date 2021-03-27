@@ -113,9 +113,9 @@ class ReplayMemory(object):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 7000
+MEMORY_CAPACITY = 50
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 1000
+MAX_EPISODE_TIME = 10
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -130,12 +130,9 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space, env_string=None):
+    def __init__(self, env, nn, action_space):
         # set env
         self.env = env
-        if env_string:
-            self.env_string = env_string
-            self.env = gym.make(env_string).unwrapped
 
         # if gpu is to be used
         self.device = torch.device(
@@ -308,12 +305,6 @@ class RL_Model():
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
             print('Ram Used: %f' % memory_used())
 
-            # clear env
-            if i_ep % ENV_CLEAR == 0 and self.env_string:
-                self.env.close()
-                del self.env
-                self.env = gym.make(self.env_string).unwrapped
-
             # reset env and state
             self.env.reset()
             last_screen = self.get_screen()
@@ -404,12 +395,41 @@ class RL_Model():
 
 # env = gym.make('CarRacing-v0').unwrapped
 
+'''
+Wrapper class that takes care of the memory fix
+Pass in nuke_intervals -> which recreates a new environment fully
+every nuke_intervals
+'''
+
+
+class MemoryWrapper(gym.Wrapper):
+    def __init__(self, make_env, nuke_intervals=5):
+        env = make_env()
+        super().__init__(env)
+        self.make_env = make_env
+
+        self.num_resets = 0
+        self.nuke_intervals = nuke_intervals
+
+    def reset(self):
+        if self.num_resets % self.nuke_intervals == 0:
+            self.nuke()
+            self.num_resets = 0
+
+        self.num_resets += 1
+
+    def nuke(self):
+        self.env.close()
+        del self.env
+        self.env = self.make_env()
+        self.env.reset()
+
+
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1,
                                                                                                         1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
 d_actions = list(discrete_action_space.values())
-
-model = RL_Model(gym.make('CarRacing-v0').unwrapped,
-                 DQN, d_actions, 'CarRacing-v0')
+env = MemoryWrapper(lambda: gym.make('CarRacing-v0').unwrapped)
+model = RL_Model(env, DQN, d_actions)
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
