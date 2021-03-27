@@ -1,0 +1,8 @@
+name: smort_cars
+channels:
+  - defaults
+dependencies:
+  - pip
+  - python=3.8
+  - git
+  - swig
