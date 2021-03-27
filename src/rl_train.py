@@ -1,3 +1,5 @@
+import Box2D
+from Box2D.b2 import contactListener
 import torch
 
 import gc
@@ -129,9 +131,9 @@ def remove_outliers(x, constant):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 50
+MEMORY_CAPACITY = 500
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 10
+MAX_EPISODE_TIME = 1000
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -434,27 +436,76 @@ class MemoryWrapper(gym.Wrapper):
         self.env.reset()
 
 
+ROAD_COLOR = [0.4, 0.4, 0.4]
+
+
+class FrictionDetector(contactListener):
+    def __init__(self, env):
+        contactListener.__init__(self)
+        self.env = env
+
+    def BeginContact(self, contact):
+        self._contact(contact, True)
+
+    def EndContact(self, contact):
+        self._contact(contact, False)
+
+    def _contact(self, contact, begin):
+        tile = None
+        obj = None
+        u1 = contact.fixtureA.body.userData
+        u2 = contact.fixtureB.body.userData
+        if u1 and "road_friction" in u1.__dict__:
+            tile = u1
+            obj = u2
+        if u2 and "road_friction" in u2.__dict__:
+            tile = u2
+            obj = u1
+        if not tile:
+            return
+
+        print(tile.color)
+
+        if not obj or "tiles" not in obj.__dict__:
+            return
+        if begin:
+            obj.tiles.add(tile)
+            if not tile.road_visited:
+                tile.road_visited = True
+                self.env.reward += 100  # 1000.0 / len(self.env.track)
+                self.env.tile_visited_count += 1
+        else:
+            obj.tiles.remove(tile)
+
+        if tile.color == ROAD_COLOR:
+            print("ON THE ROAD!")
+
+        if tile.color != ROAD_COLOR:
+            print("ON THE GRASS")
+            self.env.reward -= 100
+
+
 class RewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
+        # print(env)
+        env.contactListener_keepref = FrictionDetector(env)
+        env.world = Box2D.b2World(
+            (0, 0), contactListener=env.contactListener_keepref)
 
-    def reward(self, rew):
-        super().reward()
-        print(rew)
-        return rew
-                                                                                                      1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1]}
+
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 d_actions = list(discrete_action_space.values())
-env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0')))
-model=RL_Model(env, DQN, d_actions)
+env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
+model = RL_Model(env, DQN, d_actions)
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
 
-for i in range(1, 20):
-    ep, rewards=model.train(
-        5, render=False, epoch=i)
+for i in range(1, 2):
+    ep, rewards = model.train(
+        5, render=True, epoch=i)
     model.save("rl_progress_ep_" + str(i * 5))
     model.generate_policy_video("rl_progress_ep_" + str(i*5))
     plt.title('Rewards Over Episode')
