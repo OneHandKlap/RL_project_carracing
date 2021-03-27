@@ -131,9 +131,9 @@ def remove_outliers(x, constant):
 
 # Hyperparameters
 BATCH_SIZE = 128
-MEMORY_CAPACITY = 500
+MEMORY_CAPACITY = 7000
 NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 1000
+MAX_EPISODE_TIME = 2000
 GAMMA = 0.999
 EPS_START = 0.9
 EPS_END = 0.05
@@ -213,7 +213,7 @@ class RL_Model():
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
-        screen = screen[np.ix_([x for x in range(100, 400)], [
+        screen = screen[np.ix_([x for x in range(100, 360)], [
                                x for x in range(200, 400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
@@ -334,7 +334,7 @@ class RL_Model():
                     plt.imshow(self.get_screen().cpu().squeeze(
                         0).permute(1, 2, 0).numpy(), interpolation='none')
                     plt.draw()
-                    plt.pause(1e-3)
+                    plt.pause(1e-6)
 
                 # select an action from the state
                 action = self.select_action(state)
@@ -348,10 +348,10 @@ class RL_Model():
                 # observe new state
                 last_screen = current_screen
                 current_screen = self.get_screen()
-                # if not done:
-                next_state = current_screen - last_screen
-                # else:
-                #    next_state = None
+                if not done:
+                    next_state = current_screen - last_screen
+                else:
+                    next_state = None
 
                 # Store the transition in memory
                 self.memory.push(state, action, next_state, reward)
@@ -363,7 +363,7 @@ class RL_Model():
                 self.optimize_model()
 
                 # Check if past step limit
-                if t > MAX_EPISODE_TIME:
+                if t > MAX_EPISODE_TIME or done:
                     break
 
             # Update target network, copy all weights and biases
@@ -427,13 +427,13 @@ class MemoryWrapper(gym.Wrapper):
             self.nuke()
             self.num_resets = 0
 
+        self.env.reset()
         self.num_resets += 1
 
     def nuke(self):
         self.env.close()
         del self.env
         self.env = self.make_env()
-        self.env.reset()
 
 
 ROAD_COLOR = [0.4, 0.4, 0.4]
@@ -706,28 +706,44 @@ class RewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         # print(env)
-        #env._create_track = lambda: create_track(env)
+        # env._create_track = lambda: create_track(env)
         env.on_track = False
         env.on_grass_count = 0
+        self.init_time = 0
         env.contactListener_keepref = FrictionDetector(env)
         env.world = Box2D.b2World(
             (0, 0), contactListener=env.contactListener_keepref)
 
         self.env = env
 
+    def reset(self):
+        self.env.reset()
+        self.init_time = 0
+
     def step(self, action):
+
         self.env.on_track = False
         res = self.env.step(action)
 
-        if not self.env.on_track:
-            self.env.on_grass_count += 1
+        if self.init_time > 50:
+            print(self.env.on_track)
+            if not self.env.on_track:
+                self.env.on_grass_count += 1
 
-            if (self.env.on_grass_count > 3):
-                self.env.reward -= 5
-                #print("ON GRASS")
+                if (self.env.on_grass_count > 3):
+                    self.env.reward -= 5
+
+                if self.env.on_grass_count > 10:
+                    obs, reward, _, info = res
+                    print("YOU ARE DONE!")
+                    return obs, reward, True, info
+                    #
+            else:
+                # print("ON ROAD")
+                self.env.on_grass_count = 0
         else:
-            #print("ON ROAD")
-            self.env.on_grass_count = 0
+            self.init_time += 1
+            print(self.init_time)
 
         return res
 
@@ -735,8 +751,10 @@ class RewardWrapper(gym.Wrapper):
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 # discrete_action_space.values())
-d_actions = list([discrete_action_space["go"],
-                  discrete_action_space["go_left"], discrete_action_space["go_right"]])
+# list([discrete_action_space["go"],
+#d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
+d_actions = list(discrete_action_space.values())
+# discrete_action_space["go_left"], discrete_action_space["go_right"]])
 
 env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
 model = RL_Model(env, DQN, d_actions)
@@ -744,14 +762,17 @@ model = RL_Model(env, DQN, d_actions)
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
 
-for i in range(1, 2):
+for i in range(1, 10):
     ep, rewards = model.train(
-        5, render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 5))
-    model.generate_policy_video("rl_progress_ep_" + str(i*5))
+        100, render=True, epoch=i)
+    model.save("results/rl_progress_ep_" + str(i * 100))
+    model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
     plt.title('Rewards Over Episode')
     plt.xlabel('Episode')
     plt.ylabel('Rewards')
     plt.scatter([x for x in range(len(rewards))], rewards)
     plt.legend()
-    plt.savefig("rl_progress_ep_"+str(i*5))
+    plt.savefig("results/rl_progress_ep_"+str(i*100))
+    plt.show()
+    plt.pause(1e-5)
+    plt.draw()
