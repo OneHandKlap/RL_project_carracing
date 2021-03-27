@@ -451,6 +451,9 @@ class FrictionDetector(contactListener):
         self._contact(contact, False)
 
     def _contact(self, contact, begin):
+        self.env.on_track = True
+        print("ON THE ROAD!")
+
         tile = None
         obj = None
         u1 = contact.fixtureA.body.userData
@@ -469,11 +472,9 @@ class FrictionDetector(contactListener):
             tile = u2
             obj = u1
         if not tile:
-            # print(contact)
             return
 
         if not obj or "tiles" not in obj.__dict__:
-            #print("ON THE GRASS")
             return
         if begin:
             obj.tiles.add(tile)
@@ -483,8 +484,6 @@ class FrictionDetector(contactListener):
                 self.env.tile_visited_count += 1
         else:
             obj.tiles.remove(tile)
-
-        #print("ON THE ROAD!")
 
 
 STATE_W = 96  # less than Atari 160x192
@@ -708,10 +707,22 @@ class RewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         # print(env)
-        env._create_track = lambda: create_track(env)
+        #env._create_track = lambda: create_track(env)
+        env.on_track = False
         env.contactListener_keepref = FrictionDetector(env)
         env.world = Box2D.b2World(
             (0, 0), contactListener=env.contactListener_keepref)
+
+        self.env = env
+
+    def step(self, action):
+        self.env.on_track = False
+        res = self.env.step(action)
+
+        if not self.env.on_track:
+            print("ON GRASS")
+
+        return res
 
 
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
