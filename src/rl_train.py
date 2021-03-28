@@ -5,6 +5,7 @@ from Box2D.b2 import contactListener
 import pyglet
 from pyglet import gl
 import torch
+import time
 
 import gc
 import numpy as np
@@ -461,13 +462,12 @@ class FrictionDetector(contactListener):
         obj = None
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
-        # print(contact)
-        '''
-        if (u1):
-            print(u1.__dict__)
-        if (u2):
-            print(u2.__dict__)
-        '''
+
+        if u1 and "road_friction" in u1.__dict__ and u2 and "road_friction" in u2.__dict__:
+            print("===========")
+            print(u1.tile_type)
+            print(u2.tile_type)
+
         if u1 and "road_friction" in u1.__dict__:
             tile = u1
             obj = u2
@@ -477,16 +477,20 @@ class FrictionDetector(contactListener):
         if not tile:
             return
 
-        if not obj or "tiles" not in obj.__dict__:
-            return
-        if begin:
-            obj.tiles.add(tile)
-            if not tile.road_visited:
-                tile.road_visited = True
-                self.env.reward += 1000.0 / len(self.env.track)
-                self.env.tile_visited_count += 1
-        else:
-            obj.tiles.remove(tile)
+        print("===========")
+        print(tile.tile_type)
+
+        if(tile.tile_type == "ROAD"):
+            if not obj or "tiles" not in obj.__dict__:
+                return
+            if begin:
+                obj.tiles.add(tile)
+                if not tile.road_visited:
+                    tile.road_visited = True
+                    self.env.reward += 1000.0 / len(self.env.track)
+                    self.env.tile_visited_count += 1
+            else:
+                obj.tiles.remove(tile)
 
 
 STATE_W = 96  # less than Atari 160x192
@@ -676,6 +680,7 @@ def create_track(self):
         t.color = [ROAD_COLOR[0] + c, ROAD_COLOR[1] + c, ROAD_COLOR[2] + c]
         t.road_visited = False
         t.road_friction = 1.0
+        t.tile_type = "ROAD"
         t.fixtures[0].sensor = True
         self.road_poly.append(
             ([road1_l, road1_r, road2_r, road2_l], t.color))
@@ -726,13 +731,18 @@ def render_road(self):
 
     # create grass
     grass_fd = fixtureDef(
-        shape=polygonShape(vertices=[(+1, +1), (1, -1), (-1, -1), (-1, 1)])
+        shape=polygonShape(vertices=[(+PLAYFIELD, +PLAYFIELD), (+PLAYFIELD, -PLAYFIELD),
+                                     (-PLAYFIELD, -PLAYFIELD), (-PLAYFIELD, +PLAYFIELD)])
     )
-    grass = self.world.CreateStaticBody(fixtures=self.fd_tile)
+    grass = self.world.CreateStaticBody(fixtures=grass_fd)
     grass.userData = grass
     grass.color = [1, 1, 1, 1.0]
+    grass.tile_type = "GRASS"
+    grass.road_friction = 1.0
+    grass.fixtures[0].sensor = True
+
     self.road_poly.insert(0, ([(+PLAYFIELD, +PLAYFIELD), (+PLAYFIELD, -PLAYFIELD),
-                               (-PLAYFIELD, -PLAYFIELD), (-PLAYFIELD, +PLAYFIELD)], grass.color))
+                               (-PLAYFIELD, -PLAYFIELD), (-PLAYFIELD, +PLAYFIELD)], [1, 1, 1, 1.0]))
 
     # Road generation
     for poly, color in self.road_poly:
@@ -769,6 +779,7 @@ class RewardWrapper(gym.Wrapper):
     def step(self, action):
 
         self.env.on_track = False
+        # time.sleep(0.5)
         res = self.env.step(action)
 
         if self.init_time > 50:
@@ -790,7 +801,7 @@ class RewardWrapper(gym.Wrapper):
             '''
         else:
             self.init_time += 1
-            print(self.init_time)
+           # print(self.init_time)
 
         return res
 
@@ -799,8 +810,8 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 # discrete_action_space.values())
 # list([discrete_action_space["go"],
-# d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
-d_actions = list(discrete_action_space.values())
+d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
+# d_actions = list(discrete_action_space.values())
 # discrete_action_space["go_left"], discrete_action_space["go_right"]])
 
 env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
