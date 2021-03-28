@@ -1,5 +1,9 @@
+from Box2D.b2 import polygonShape
+from Box2D.b2 import fixtureDef
 import Box2D
 from Box2D.b2 import contactListener
+import pyglet
+from pyglet import gl
 import torch
 
 import gc
@@ -497,7 +501,7 @@ TRACK_RAD = 900 / SCALE  # Track is heavily morphed circle with this radius
 PLAYFIELD = 2000 / SCALE  # Game over boundary
 FPS = 50  # Frames per second
 ZOOM = 2.7  # Camera zoom
-ZOOM_FOLLOW = True  # Set to False for fixed view (don't use zoom)
+ZOOM_FOLLOW = False  # Set to False for fixed view (don't use zoom)
 
 
 TRACK_DETAIL_STEP = 21 / SCALE
@@ -702,18 +706,60 @@ def create_track(self):
     return True
 
 
+def render_road(self):
+    # [0, 0, 0, 1]*4  # [0.235, 0.052, 0.198, 1.0] * 4
+    colors = [0.4, 0.9, 0.4, 1.0] * 4
+    polygons_ = [
+        +PLAYFIELD,
+        +PLAYFIELD,
+        0,
+        +PLAYFIELD,
+        -PLAYFIELD,
+        0,
+        -PLAYFIELD,
+        -PLAYFIELD,
+        0,
+        -PLAYFIELD,
+        +PLAYFIELD,
+        0,
+    ]
+
+    # create grass
+    grass_fd = fixtureDef(
+        shape=polygonShape(vertices=[(+1, +1), (1, -1), (-1, -1), (-1, 1)])
+    )
+    grass = self.world.CreateStaticBody(fixtures=self.fd_tile)
+    grass.userData = grass
+    grass.color = [1, 1, 1, 1.0]
+    self.road_poly.insert(0, ([(+PLAYFIELD, +PLAYFIELD), (+PLAYFIELD, -PLAYFIELD),
+                               (-PLAYFIELD, -PLAYFIELD), (-PLAYFIELD, +PLAYFIELD)], grass.color))
+
+    # Road generation
+    for poly, color in self.road_poly:
+        colors.extend([color[0], color[1], color[2], 1] * len(poly))
+        for p in poly:
+            polygons_.extend([p[0], p[1], 0])
+
+    # draw grass + road
+    vl = pyglet.graphics.vertex_list(
+        len(polygons_) // 3, ("v3f", polygons_), ("c4f", colors)  # gl.GL_QUADS,
+    )
+    vl.draw(gl.GL_QUADS)
+    vl.delete()
+
+
 class RewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         # print(env)
-        # env._create_track = lambda: create_track(env)
+        env._create_track = lambda: create_track(env)
         env.on_track = False
         env.on_grass_count = 0
         self.init_time = 0
         env.contactListener_keepref = FrictionDetector(env)
         env.world = Box2D.b2World(
             (0, 0), contactListener=env.contactListener_keepref)
-
+        env.render_road = lambda: render_road(env)
         self.env = env
 
     def reset(self):
@@ -726,8 +772,8 @@ class RewardWrapper(gym.Wrapper):
         res = self.env.step(action)
 
         if self.init_time > 50:
-            print(self.env.on_track)
-            if not self.env.on_track:
+            # print(self.env.on_track)
+            '''if not self.env.on_track:
                 self.env.on_grass_count += 1
 
                 if (self.env.on_grass_count > 3):
@@ -741,6 +787,7 @@ class RewardWrapper(gym.Wrapper):
             else:
                 # print("ON ROAD")
                 self.env.on_grass_count = 0
+            '''
         else:
             self.init_time += 1
             print(self.init_time)
@@ -752,7 +799,7 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 # discrete_action_space.values())
 # list([discrete_action_space["go"],
-#d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
+# d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
 d_actions = list(discrete_action_space.values())
 # discrete_action_space["go_left"], discrete_action_space["go_right"]])
 
