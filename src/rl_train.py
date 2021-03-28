@@ -1,4 +1,4 @@
-from Box2D.b2 import polygonShape
+from Box2D.b2 import (polygonShape, circleShape)
 from Box2D.b2 import fixtureDef
 import Box2D
 from Box2D.b2 import contactListener
@@ -463,11 +463,6 @@ class FrictionDetector(contactListener):
         u1 = contact.fixtureA.body.userData
         u2 = contact.fixtureB.body.userData
 
-        if u1 and "road_friction" in u1.__dict__ and u2 and "road_friction" in u2.__dict__:
-            print("===========")
-            print(u1.tile_type)
-            print(u2.tile_type)
-
         if u1 and "road_friction" in u1.__dict__:
             tile = u1
             obj = u2
@@ -477,8 +472,7 @@ class FrictionDetector(contactListener):
         if not tile:
             return
 
-        print("===========")
-        print(tile.tile_type)
+        self.env.collisions[tile.tile_type] = 1
 
         if(tile.tile_type == "ROAD"):
             if not obj or "tiles" not in obj.__dict__:
@@ -707,6 +701,7 @@ def create_track(self):
                 ([b1_l, b1_r, b2_r, b2_l], (1, 1, 1) if i %
                  2 == 0 else (1, 0, 0))
             )
+
     self.track = track
     return True
 
@@ -770,6 +765,7 @@ class RewardWrapper(gym.Wrapper):
         env.world = Box2D.b2World(
             (0, 0), contactListener=env.contactListener_keepref)
         env.render_road = lambda: render_road(env)
+        env.collisions = {}
         self.env = env
 
     def reset(self):
@@ -777,28 +773,27 @@ class RewardWrapper(gym.Wrapper):
         self.init_time = 0
 
     def step(self, action):
-
+        self.env.collisions = {}
         self.env.on_track = False
         # time.sleep(0.5)
         res = self.env.step(action)
 
-        if self.init_time > 50:
-            # print(self.env.on_track)
-            '''if not self.env.on_track:
+        if self.init_time > 25:
+            if self.env.collisions.get("ROAD", None) == 1:
+                #print("ON ROAD")
+                self.env.on_grass_count = 0
+            else:
+                #print("ON GRASS")
                 self.env.on_grass_count += 1
 
                 if (self.env.on_grass_count > 3):
                     self.env.reward -= 5
 
-                if self.env.on_grass_count > 10:
+                if self.env.on_grass_count > 20:
                     obs, reward, _, info = res
-                    print("YOU ARE DONE!")
+                    #print("YOU ARE DONE!")
                     return obs, reward, True, info
-                    #
-            else:
-                # print("ON ROAD")
-                self.env.on_grass_count = 0
-            '''
+
         else:
             self.init_time += 1
            # print(self.init_time)
