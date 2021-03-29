@@ -1,5 +1,3 @@
-import Box2D
-from Box2D.b2 import contactListener
 import torch
 
 import gc
@@ -20,6 +18,7 @@ import imageio
 import base64
 import psutil
 import os
+import util as util
 
 
 def memory_used():
@@ -42,104 +41,21 @@ resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
                     T.ToTensor()])
 
+Transition = namedtuple('Transition',('state', 'action', 'next_state', 'reward'))
 
-class DQN(nn.Module):
-
-    def __init__(self, h, w, outputs):
-        super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(32)
-
-        # Number of Linear input connections depends on output of conv2d layers
-        # and therefore the input image size, so compute it.
-        def conv2d_size_out(size, kernel_size=5, stride=2):
-            return (size - (kernel_size - 1) - 1) // stride + 1
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
-        linear_input_size = convw * convh * 32
-        self.head = nn.Linear(linear_input_size, outputs)
-
-    # Called with either one element to determine next action, or a batch
-    # during optimization. Returns tensor([[left0exp,right0exp]...]).
-    def forward(self, x):
-        try:
-            x = F.relu(self.bn1(self.conv1(x)))
-            x = F.relu(self.bn2(self.conv2(x)))
-            x = F.relu(self.bn3(self.conv3(x)))
-            return self.head(x.view(x.size(0), -1))
-        except:
-            print(x)
-            return self.head(x.view(x.size(0), -1))
-
-
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
-
-
-class ReplayMemory(object):
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-        self.position = 0
-
-    def push(self, *args):
-        """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        # if len(self.memory) > self.capacity:
-        #    self.clear()
-
-        # self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def clear(self):
-        # print("CLEARING MEMORY")
-        self.position = 0
-        for m in self.memory:
-            del m
-        del self.memory
-        self.memory = []
-
-    def __len__(self):
-        return len(self.memory)
-
-
-def remove_outliers(x, constant):
-    a = np.array(x)
-    upper_quartile = np.percentile(a, 75)
-    lower_quartile = np.percentile(a, 25)
-    IQR = (upper_quartile - lower_quartile) * constant
-    quartile_set = (lower_quartile - IQR, upper_quartile + IQR)
-    resultList = []
-
-    for y in a.tolist():
-        if y >= quartile_set[0] and y <= quartile_set[1]:
-            resultList.append(y)
-        else:
-            resultList.append(0)
-    return resultList
 
 
 # Hyperparameters
-BATCH_SIZE = 128
-MEMORY_CAPACITY = 500
-NUM_TRAINING_EPISODES = 50
-MAX_EPISODE_TIME = 1000
-GAMMA = 0.999
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 200
-TARGET_UPDATE = 10
-ENV_CLEAR = 5
+# BATCH_SIZE = 128
+# MEMORY_CAPACITY = 7000
+# NUM_TRAINING_EPISODES = 50
+# MAX_EPISODE_TIME = 10
+# GAMMA = 0.999
+# EPS_START = 0.9
+# EPS_END = 0.05
+# EPS_DECAY = 200
+# TARGET_UPDATE = 10
+# ENV_CLEAR = 5
 
 # RL Model Class for Training and Testing
 
@@ -148,9 +64,22 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space):
+    def __init__(self, env, nn, action_space, env_string=None, batch_size=128,memory_capacity=7000,num_training_episodes=50,max_episode_time=100,gamma=0.999,eps_start=0.9,eps_end=0.05,eps_decay=200,target_update=10,env_clear=5):
         # set env
         self.env = env
+        self.batch_size=batch_size
+        self.memory_capacity=memory_capacity
+        self.num_training_episodes=num_training_episodes
+        self.max_episode_time=max_episode_time
+        self.gamma=gamma
+        self.eps_start= eps_start
+        self.eps_end=eps_end
+        self.eps_decay=eps_decay
+        self.target_update=target_update
+        self.env_clear=env_clear
+        if env_string:
+            self.env_string = env_string
+            self.env = gym.make(env_string).unwrapped
 
         # if gpu is to be used
         self.device = torch.device(
@@ -180,7 +109,7 @@ class RL_Model():
         self.optimizer = optim.RMSprop(self.policy.parameters())
 
         # memory
-        self.memory = ReplayMemory(MEMORY_CAPACITY)
+        self.memory = util.ReplayMemory(self.memory_capacity)
 
         # variables for training
         self.steps_taken = 0
@@ -222,8 +151,8 @@ class RL_Model():
 
     def select_action(self, state):
         sample = random.random()
-        eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-            math.exp(-1. * self.steps_taken / EPS_DECAY)
+        eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * \
+            math.exp(-1. * self.steps_taken / self.eps_decay)
         self.steps_taken += 1
         if sample > eps_threshold:
             with torch.no_grad():
@@ -239,9 +168,9 @@ class RL_Model():
             return self.policy(state).max(1)[1].view(1, 1)
 
     def optimize_model(self):
-        if len(self.memory) < BATCH_SIZE:
+        if len(self.memory) < self.batch_size:
             return
-        transitions = self.memory.sample(BATCH_SIZE)
+        transitions = self.memory.sample(self.batch_size)
 
         # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
         # detailed explanation). This converts batch-array of Transitions
@@ -270,13 +199,13 @@ class RL_Model():
         # on the "older" target_net; selecting their best reward with max(1)[0].
         # This is merged based on the mask, such that we'll have either the expected
         # state value or 0 in case the state was final.
-        next_state_values = torch.zeros(BATCH_SIZE, device=self.device)
+        next_state_values = torch.zeros(self.batch_size, device=self.device)
         next_state_values[non_final_mask] = self.target(
             non_final_next_states).max(1)[0].detach()
 
         # Compute the expected Q values
         expected_state_action_values = (
-            next_state_values * GAMMA) + reward_batch
+            next_state_values * self.gamma) + reward_batch
 
         # Compute Huber loss
         loss = F.smooth_l1_loss(state_action_values,
@@ -313,15 +242,21 @@ class RL_Model():
         plt.draw()
         plt.pause(0.001)  # pause a bit so that plots are updated
 
-    def train(self, num_episodes=NUM_TRAINING_EPISODES, epoch=1, render=False):
+    def train(self, epoch=1, render=False):
         self.steps_taken = 0
-        acc_rewards = np.zeros(num_episodes)
+        acc_rewards = np.zeros(self.num_training_episodes)
         plt_color = [(random.random(), random.random(), random.random())]
-        for i_ep in range(1, num_episodes+1):
+        for i_ep in range(1, self.num_training_episodes+1):
             print("EPOCH: " + str(epoch) + " EPISODE: " + str(i_ep))
             print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
             print('Ram Used: %f' % memory_used())
+
+            # clear env
+            if i_ep % self.env_clear == 0 and self.env_string:
+                self.env.close()
+                del self.env
+                self.env = gym.make(self.env_string).unwrapped
 
             # reset env and state
             self.env.reset()
@@ -363,19 +298,19 @@ class RL_Model():
                 self.optimize_model()
 
                 # Check if past step limit
-                if t > MAX_EPISODE_TIME:
+                if t > self.max_episode_time:
                     break
 
             # Update target network, copy all weights and biases
-            if i_ep % TARGET_UPDATE == 0:
+            if i_ep % self.target_update == 0:
                 self.target.load_state_dict(self.policy.state_dict())
 
             torch.cuda.empty_cache()
             gc.collect()
 
-        return (range(1, num_episodes+1), remove_outliers(acc_rewards, 1.3))
+        return (range(1, self.num_training_episodes+1), util.remove_outliers(acc_rewards, 1.3))
 
-    def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30, max_episode_time=MAX_EPISODE_TIME):
+    def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30):
         filename = filename + ".mp4"
 
         with imageio.get_writer(filename, fps=fps) as video:
@@ -388,7 +323,7 @@ class RL_Model():
                 current_screen = self.get_screen()
                 state = current_screen - last_screen
 
-                for i in range(max_episode_time):
+                for i in range(self.max_episode_time):
                     action = self.select_deterministic_action(state)
                     # action = self.select_action(state)
                     _, reward, done, _ = self.env.step(
@@ -406,100 +341,18 @@ class RL_Model():
 
 # env = gym.make('CarRacing-v0').unwrapped
 
-'''
-Wrapper class that takes care of the memory fix
-Pass in nuke_intervals -> which recreates a new environment fully
-every nuke_intervals
-'''
+discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 
+d_actions = list(discrete_action_space.values())
 
-class MemoryWrapper(gym.Wrapper):
-    def __init__(self, make_env, nuke_intervals=5):
-        env = make_env()
-        super().__init__(env)
-        self.make_env = make_env
-
-        self.num_resets = 0
-        self.nuke_intervals = nuke_intervals
-
-    def reset(self):
-        if self.num_resets % self.nuke_intervals == 0:
-            self.nuke()
-            self.num_resets = 0
-
-        self.num_resets += 1
-
-    def nuke(self):
-        self.env.close()
-        del self.env
-        self.env = self.make_env()
-        self.env.reset()
-
-
-class FrictionDetector(contactListener):
-    def __init__(self, env):
-        contactListener.__init__(self)
-        self.env = env
-
-    def BeginContact(self, contact):
-        self._contact(contact, True)
-
-    def EndContact(self, contact):
-        self._contact(contact, False)
-
-    def _contact(self, contact, begin):
-        tile = None
-        obj = None
-        u1 = contact.fixtureA.body.userData
-        u2 = contact.fixtureB.body.userData
-
-        if u1 and "road_friction" in u1.__dict__:
-            tile = u1
-            obj = u2
-        if u2 and "road_friction" in u2.__dict__:
-            tile = u2
-            obj = u1
-        if not tile:
-            return
-
-        if not obj or "tiles" not in obj.__dict__:
-            return
-        if begin:
-            obj.tiles.add(tile)
-            if not tile.road_visited:
-                tile.road_visited = True
-                self.env.reward += 1000.0 / \
-                    len(self.env.track)  # CAN MODIFY HERE
-                self.env.tile_visited_count += 1
-        else:
-            obj.tiles.remove(tile)
-
-
-class RewardWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        env.contactListener_keepref = FrictionDetector(env)
-        env.world = Box2D.b2World(
-            (0, 0), contactListener=env.contactListener_keepref)
-
-        self.env = env
-
-
-discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
-                                                                                                                                                                                                                                       0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
-# discrete_action_space.values())
-d_actions = list([discrete_action_space["go"],
-                  discrete_action_space["go_left"], discrete_action_space["go_right"]])
-
-env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
-model = RL_Model(env, DQN, d_actions)
+model = RL_Model(gym.make('CarRacing-v0').unwrapped,
+                 util.DQN, d_actions, 'CarRacing-v0',)
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
 
-for i in range(1, 2):
-    ep, rewards = model.train(
-        5, render=False, epoch=i)
+for i in range(1, 20):
+    ep, rewards = model.train(render=False, epoch=i)
     model.save("rl_progress_ep_" + str(i * 5))
     model.generate_policy_video("rl_progress_ep_" + str(i*5))
     plt.title('Rewards Over Episode')
