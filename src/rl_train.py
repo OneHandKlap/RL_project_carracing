@@ -25,7 +25,6 @@ def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
-'''
 from pyvirtualdisplay import Display
 display = Display(visible=0, size=(1400, 900))
 display.start()
@@ -35,7 +34,6 @@ if is_ipython:
     from IPython import display
 
 plt.ion()
-'''
 
 resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
@@ -366,16 +364,15 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
 
 d_actions = list(discrete_action_space.values())
 
-model = RL_Model(gym.make('CarRacing-v0').unwrapped,
-                 util.DQN, d_actions, 'CarRacing-v0',num_training_episodes=20)
+model = RL_Model(env, util.DQN, d_actions, num_training_episodes=100)
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 5))
-    model.generate_policy_video("rl_progress_ep_" + str(i*5))
+    model.save("results/rl_progress_ep_" + str(i * 100))
+    model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
     test_rewards,steps=model.test()
     average=np.mean(test_rewards)
     plt.title('Rewards Over Episode')
@@ -384,3 +381,4 @@ for i in range(1, 20):
     plt.scatter([x for x in range(len(test_rewards))], test_rewards)
     plt.legend()
     plt.show()
+    plt.savefig("results/rl_progress_fig.png")
