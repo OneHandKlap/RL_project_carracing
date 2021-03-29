@@ -303,6 +303,7 @@ class RL_Model():
     
     def test(self,num_episodes=50):
         acc_rewards=[]
+        steps=[]
         for episode in range(num_episodes):
             time_step = self.env.reset()
             done = False
@@ -310,6 +311,7 @@ class RL_Model():
             last_screen = self.get_screen()
             current_screen = self.get_screen()
             state = current_screen - last_screen
+            steps_this_ep=0
 
             for i in range(self.max_episode_time):
                 action = self.select_deterministic_action(state)
@@ -322,8 +324,10 @@ class RL_Model():
                 last_screen = current_screen
                 current_screen = self.get_screen()
                 state = current_screen-last_screen
+                steps_this_ep+=1
             acc_rewards.append(temp_rewards)
-        return acc_rewards
+            steps.append(steps_this_ep)
+        return acc_rewards,steps
 
 
 
@@ -372,7 +376,7 @@ for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
     model.save("rl_progress_ep_" + str(i * 5))
     model.generate_policy_video("rl_progress_ep_" + str(i*5))
-    test_rewards=model.test()
+    test_rewards,steps=model.test()
     average=np.mean(test_rewards)
     plt.title('Rewards Over Episode')
     plt.xlabel('Episode')
