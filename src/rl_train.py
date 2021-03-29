@@ -773,17 +773,19 @@ class RewardWrapper(gym.Wrapper):
         self.init_time = 0
 
     def step(self, action):
-        self.env.collisions = {}
+        if(self.init_time % 3 == 0):
+            self.env.collisions = {}
         self.env.on_track = False
         # time.sleep(0.5)
         res = self.env.step(action)
+        print(self.env.collisions)
 
-        if self.init_time > 25:
+        if self.init_time > 30:
             if self.env.collisions.get("ROAD", None) == 1:
-                #print("ON ROAD")
+                print("ON ROAD")
                 self.env.on_grass_count = 0
             else:
-                #print("ON GRASS")
+                print("ON GRASS")
                 self.env.on_grass_count += 1
 
                 if (self.env.on_grass_count > 3):
@@ -794,9 +796,9 @@ class RewardWrapper(gym.Wrapper):
                     #print("YOU ARE DONE!")
                     return obs, reward, True, info
 
-        else:
-            self.init_time += 1
-           # print(self.init_time)
+        # else:
+        self.init_time += 1
+        # print(self.init_time)
 
         return res
 
@@ -805,8 +807,8 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
                                                                                                                                                                                                                                        0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 # discrete_action_space.values())
 # list([discrete_action_space["go"],
-d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
-# d_actions = list(discrete_action_space.values())
+#d_actions = list([discrete_action_space["go"], discrete_action_space["go"]])
+d_actions = list(discrete_action_space.values())
 # discrete_action_space["go_left"], discrete_action_space["go_right"]])
 
 env = MemoryWrapper(lambda: RewardWrapper(gym.make('CarRacing-v0').unwrapped))
