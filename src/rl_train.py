@@ -76,11 +76,7 @@ class RL_Model():
         self.eps_end=eps_end
         self.eps_decay=eps_decay
         self.target_update=target_update
-        self.env_clear=env_clear
-        if env_string:
-            self.env_string = env_string
-            self.env = gym.make(env_string).unwrapped
-
+        
         # if gpu is to be used
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
@@ -252,11 +248,6 @@ class RL_Model():
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
             print('Ram Used: %f' % memory_used())
 
-            # clear env
-            if i_ep % self.env_clear == 0 and self.env_string:
-                self.env.close()
-                del self.env
-                self.env = gym.make(self.env_string).unwrapped
 
             # reset env and state
             self.env.reset()
@@ -309,6 +300,32 @@ class RL_Model():
             gc.collect()
 
         return (range(1, self.num_training_episodes+1), util.remove_outliers(acc_rewards, 1.3))
+    
+    def test(self,num_episodes=50):
+        acc_rewards=[]
+        for episode in range(num_episodes):
+            time_step = self.env.reset()
+            done = False
+            temp_rewards=0
+            last_screen = self.get_screen()
+            current_screen = self.get_screen()
+            state = current_screen - last_screen
+
+            for i in range(self.max_episode_time):
+                action = self.select_deterministic_action(state)
+                # action = self.select_action(state)
+                _, reward, done, _ = self.env.step(
+                    self.action_space[action.item()])
+
+
+                temp_rewards+=reward
+                last_screen = current_screen
+                current_screen = self.get_screen()
+                state = current_screen-last_screen
+            acc_rewards.append(temp_rewards)
+        return acc_rewards
+
+
 
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30):
         filename = filename + ".mp4"
@@ -339,14 +356,14 @@ class RL_Model():
         return True
 
 
-# env = gym.make('CarRacing-v0').unwrapped
+env = util.MemoryWrapper(lambda: util.RewardWrapper(gym.make('CarRacing-v0').unwrapped))
 
 discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 
 d_actions = list(discrete_action_space.values())
 
 model = RL_Model(gym.make('CarRacing-v0').unwrapped,
-                 util.DQN, d_actions, 'CarRacing-v0',)
+                 util.DQN, d_actions, 'CarRacing-v0',num_training_episodes=20)
 
 # model.generate_policy_video("rl_progress_ep_" + str(0))
 
@@ -355,9 +372,11 @@ for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
     model.save("rl_progress_ep_" + str(i * 5))
     model.generate_policy_video("rl_progress_ep_" + str(i*5))
+    test_rewards=model.test()
+    average=np.mean(test_rewards)
     plt.title('Rewards Over Episode')
     plt.xlabel('Episode')
     plt.ylabel('Rewards')
-    plt.scatter([x for x in range(len(rewards))], rewards)
+    plt.scatter([x for x in range(len(test_rewards))], test_rewards)
     plt.legend()
-    plt.savefig("rl_progress_ep_"+str(i*5))
+    plt.show()
