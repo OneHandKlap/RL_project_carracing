@@ -135,6 +135,10 @@ class RL_Model():
             # 'loss': loss,
         },
             path + ".pth")
+        
+        f= open(path+"_config.txt","w+")
+        for attr, value in vars(self).items():
+            f.write("\n"+attr+":\t"+str(value))
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
@@ -369,18 +373,17 @@ d_actions = list(discrete_action_space.values())
 model = RL_Model(gym.make('CarRacing-v0').unwrapped,
                  util.DQN, d_actions, 'CarRacing-v0',num_training_episodes=20)
 
-# model.generate_policy_video("rl_progress_ep_" + str(0))
+model.load("rl_progress_ep_5.pth")
 
-
-for i in range(1, 20):
-    ep, rewards = model.train(render=False, epoch=i)
-    model.save("rl_progress_ep_" + str(i * 5))
-    model.generate_policy_video("rl_progress_ep_" + str(i*5))
-    test_rewards,steps=model.test()
-    average=np.mean(test_rewards)
-    plt.title('Rewards Over Episode')
-    plt.xlabel('Episode')
-    plt.ylabel('Rewards')
-    plt.scatter([x for x in range(len(test_rewards))], test_rewards)
-    plt.legend()
-    plt.show()
+# for i in range(1, 20):
+#     ep, rewards = model.train(render=False, epoch=i)
+#     model.save("rl_progress_ep_" + str(i * 5))
+#     #model.generate_policy_video("rl_progress_ep_" + str(i*5))
+model.save("test")
+    # average=np.mean(test_rewards)
+    # plt.title('Rewards Over Episode')
+    # plt.xlabel('Episode')
+    # plt.ylabel('Rewards')
+    # plt.scatter([x for x in range(len(test_rewards))], test_rewards)
+    # plt.legend()
+    # plt.show()
