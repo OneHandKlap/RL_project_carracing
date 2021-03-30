@@ -62,7 +62,7 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space, env_string=None, batch_size=128,memory_capacity=7000,num_training_episodes=50,max_episode_time=100,gamma=0.999,eps_start=0.9,eps_end=0.05,eps_decay=200,target_update=10,env_clear=5):
+    def __init__(self, env, nn, action_space, env_string=None, batch_size=128,memory_capacity=7000,num_training_episodes=50,max_episode_time=2000,gamma=0.999,eps_start=0.9,eps_end=0.05,eps_decay=200,target_update=10,env_clear=5):
         # set env
         self.env = env
         self.batch_size=batch_size
