@@ -24,6 +24,7 @@ import util as util
 import Box2D
 from Box2D.b2 import contactListener
 
+
 def remove_outliers(x, constant):
     a = np.array(x)
     upper_quartile = np.percentile(a, 75)
@@ -58,6 +59,7 @@ class MemoryWrapper(gym.Wrapper):
         self.num_resets += 1
 
     def nuke(self):
+        print("NUKING!")
         self.env.close()
         del self.env
         self.env = self.make_env()
@@ -95,8 +97,8 @@ class FrictionDetector(contactListener):
             obj.tiles.add(tile)
             if not tile.road_visited:
                 tile.road_visited = True
-                #self.env.reward += 1000.0 /len(self.env.track)  # CAN MODIFY HERE
-                self.env.reward+=30
+                # self.env.reward += 1000.0 /len(self.env.track)  # CAN MODIFY HERE
+                self.env.reward += 30
                 self.env.tile_visited_count += 1
         else:
             obj.tiles.remove(tile)
@@ -112,10 +114,8 @@ class RewardWrapper(gym.Wrapper):
         self.env = env
 
 
-
-
 class DQN(nn.Module):
-    
+
     def __init__(self, h, w, outputs):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
@@ -147,7 +147,8 @@ class DQN(nn.Module):
             return self.head(x.view(x.size(0), -1))
 
 
-Transition = namedtuple('Transition',('state', 'action', 'next_state', 'reward'))
+Transition = namedtuple(
+    'Transition', ('state', 'action', 'next_state', 'reward'))
 
 
 class ReplayMemory(object):
