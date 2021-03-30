@@ -21,6 +21,8 @@ import psutil
 import os
 import util as util
 
+from torchsummary import summary
+
 
 def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
@@ -137,7 +139,7 @@ class RL_Model():
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
         screen = screen[np.ix_([x for x in range(100, 400)], [
-                               x for x in range(200, 400)])]
+            x for x in range(200, 400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
@@ -145,7 +147,8 @@ class RL_Model():
 
     def select_action(self, state):
         sample = random.random()
-        eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * \
+        eps_threshold = self.eps_end + \
+            (self.eps_start - self.eps_end) * \
             math.exp(-1. * self.steps_taken / self.eps_decay)
         self.steps_taken += 1
         if sample > eps_threshold:
@@ -365,14 +368,17 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
 
 d_actions = list(discrete_action_space.values())
 
-model = RL_Model(env, util.DQN, d_actions,
-                 num_training_episodes=100, max_episode_time=3000)
+# test = util.res_dqn(30, 30, 5)
+# print(test)
+
+model = RL_Model(env, util.RES_DQN, d_actions,
+                 num_training_episodes=2, max_episode_time=1000)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
     model.save("results/rl_progress_ep_" + str(i * 100))
     model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
-    avg_reward = model.test(10, epoch=i)
+    avg_reward = model.test(1, epoch=i)
     plt.title('Rewards Over Epochs')
     plt.xlabel('Epochs')
     plt.ylabel('Rewards')

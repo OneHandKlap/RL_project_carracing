@@ -8,7 +8,7 @@ import torch.nn as nn
 import gym
 import gc
 
-from itertools import count
+from itertools import count, chain
 import random
 import math
 import matplotlib.pyplot as plt
@@ -23,6 +23,7 @@ import os
 import util as util
 import Box2D
 from Box2D.b2 import contactListener
+from torchvision import models
 
 
 def remove_outliers(x, constant):
@@ -145,6 +146,34 @@ class DQN(nn.Module):
         except:
             print(x)
             return self.head(x.view(x.size(0), -1))
+
+
+class RES_DQN(nn.Module):
+    def __init__(self, h, w, outputs):
+        super(RES_DQN, self).__init__()
+        self.pretrained = models.resnet18(pretrained=True)
+        self.children_list = []
+        for n, c in self.pretrained.named_children():
+            self.children_list.append(c)
+
+            if n == "layer4":
+                break
+
+        self.feature_extractor = nn.Sequential(*self.children_list)
+        self.pretrained = None
+
+        self.fc1 = nn.Linear(2048, 1000)
+        self.fc2 = nn.Linear(1000, outputs)
+
+    def parameters(self):
+        return chain(self.fc1.parameters(), self.fc2.parameters())
+
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return x
 
 
 Transition = namedtuple(
