@@ -1,3 +1,4 @@
+from pyvirtualdisplay import Display
 import torch
 
 import gc
@@ -25,7 +26,6 @@ def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
-from pyvirtualdisplay import Display
 display = Display(visible=0, size=(1400, 900))
 display.start()
 
@@ -39,8 +39,8 @@ resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
                     T.ToTensor()])
 
-Transition = namedtuple('Transition',('state', 'action', 'next_state', 'reward'))
-
+Transition = namedtuple(
+    'Transition', ('state', 'action', 'next_state', 'reward'))
 
 
 # Hyperparameters
@@ -62,19 +62,19 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space, env_string=None, batch_size=128,memory_capacity=7000,num_training_episodes=50,max_episode_time=2000,gamma=0.999,eps_start=0.9,eps_end=0.05,eps_decay=200,target_update=10,env_clear=5):
+    def __init__(self, env, nn, action_space, env_string=None, batch_size=128, memory_capacity=7500, num_training_episodes=50, max_episode_time=3000, gamma=0.999, eps_start=0.9, eps_end=0.05, eps_decay=200, target_update=10, env_clear=5):
         # set env
         self.env = env
-        self.batch_size=batch_size
-        self.memory_capacity=memory_capacity
-        self.num_training_episodes=num_training_episodes
-        self.max_episode_time=max_episode_time
-        self.gamma=gamma
-        self.eps_start= eps_start
-        self.eps_end=eps_end
-        self.eps_decay=eps_decay
-        self.target_update=target_update
-        
+        self.batch_size = batch_size
+        self.memory_capacity = memory_capacity
+        self.num_training_episodes = num_training_episodes
+        self.max_episode_time = max_episode_time
+        self.gamma = gamma
+        self.eps_start = eps_start
+        self.eps_end = eps_end
+        self.eps_decay = eps_decay
+        self.target_update = target_update
+
         # if gpu is to be used
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
@@ -250,7 +250,6 @@ class RL_Model():
             print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
             print('Ram Used: %f' % memory_used())
 
-
             # reset env and state
             self.env.reset()
             last_screen = self.get_screen()
@@ -302,18 +301,17 @@ class RL_Model():
             gc.collect()
 
         return (range(1, self.num_training_episodes+1), util.remove_outliers(acc_rewards, 1.3))
-    
-    def test(self,num_episodes=50):
-        acc_rewards=[]
-        steps=[]
+
+    def test(self, num_episodes=50, epoch=1):
+        avg_reward = 0
         for episode in range(num_episodes):
+            print("TEST EPOCH: " + str(epoch) +
+                  " EPISODE: " + str(episode + 1))
+            print('Ram Used: %f' % memory_used())
             time_step = self.env.reset()
-            done = False
-            temp_rewards=0
             last_screen = self.get_screen()
             current_screen = self.get_screen()
             state = current_screen - last_screen
-            steps_this_ep=0
 
             for i in range(self.max_episode_time):
                 action = self.select_deterministic_action(state)
@@ -321,17 +319,15 @@ class RL_Model():
                 _, reward, done, _ = self.env.step(
                     self.action_space[action.item()])
 
-
-                temp_rewards+=reward
+                avg_reward += reward
                 last_screen = current_screen
                 current_screen = self.get_screen()
                 state = current_screen-last_screen
-                steps_this_ep+=1
-            acc_rewards.append(temp_rewards)
-            steps.append(steps_this_ep)
-        return acc_rewards,steps
 
+            torch.cuda.empty_cache()
+            gc.collect()
 
+        return avg_reward/num_episodes
 
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30):
         filename = filename + ".mp4"
@@ -359,30 +355,31 @@ class RL_Model():
                     if(done):
                         break
 
+            torch.cuda.empty_cache()
+            gc.collect()
+
         return True
 
 
-env = util.MemoryWrapper(lambda: util.RewardWrapper(gym.make('CarRacing-v0').unwrapped))
+env = util.MemoryWrapper(lambda: util.RewardWrapper(
+    gym.make('CarRacing-v0').unwrapped))
 
-discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
+discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0], "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1], "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3,
+                                                                                                                                                                                                                                       0, 0], "slight_turn_right": [.3, 0, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0], "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3], "slight_brake_right": [.3, 0, .3]}
 
 d_actions = list(discrete_action_space.values())
 
-model = RL_Model(env, util.DQN, d_actions, num_training_episodes=100)
-
-# model.generate_policy_video("rl_progress_ep_" + str(0))
-
+model = RL_Model(env, util.DQN, d_actions,
+                 num_training_episodes=100, max_episode_time=3000)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
     model.save("results/rl_progress_ep_" + str(i * 100))
     model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
-    test_rewards,steps=model.test()
-    average=np.mean(test_rewards)
-    plt.title('Rewards Over Episode')
-    plt.xlabel('Episode')
+    avg_reward = model.test(10, epoch=i)
+    plt.title('Rewards Over Epochs')
+    plt.xlabel('Epochs')
     plt.ylabel('Rewards')
-    plt.scatter([x for x in range(len(test_rewards))], test_rewards)
+    plt.scatter(i, avg_reward, color="blue")
     plt.legend()
-    plt.show()
     plt.savefig("results/rl_progress_fig.png")
