@@ -28,6 +28,7 @@ def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
+'''
 display = Display(visible=0, size=(1400, 900))
 display.start()
 
@@ -36,6 +37,7 @@ if is_ipython:
     from IPython import display
 
 plt.ion()
+'''
 
 resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
@@ -94,10 +96,12 @@ class RL_Model():
         # policy net
         self.policy = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
+        self.policy.feature_extractor.to(self.device)
 
         # target net
         self.target = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
+        self.target.feature_extractor.to(self.device)
         self.target.load_state_dict(self.policy.state_dict())
         self.target.eval()
 
@@ -138,8 +142,7 @@ class RL_Model():
 
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
-        screen = screen[np.ix_([x for x in range(100, 400)], [
-            x for x in range(200, 400)])]
+        # screen = screen[np.ix_([x for x in range(100, 400)], [x for x in range(200, 400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
@@ -372,12 +375,13 @@ d_actions = list(discrete_action_space.values())
 # print(test)
 
 model = RL_Model(env, util.RES_DQN, d_actions,
-                 num_training_episodes=2, max_episode_time=1000)
+                 num_training_episodes=10, max_episode_time=2000, batch_size=512)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
-    model.save("results/rl_progress_ep_" + str(i * 100))
-    model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
+    model.save("results/rl_progress_ep_" + str(i * 10))
+    model.generate_policy_video("results/rl_progress_ep_" + str(i*10))
+
     avg_reward = model.test(1, epoch=i)
     plt.title('Rewards Over Epochs')
     plt.xlabel('Epochs')
@@ -385,3 +389,5 @@ for i in range(1, 20):
     plt.scatter(i, avg_reward, color="blue")
     plt.legend()
     plt.savefig("results/rl_progress_fig.png")
+    torch.cuda.empty_cache()
+    gc.collect()
