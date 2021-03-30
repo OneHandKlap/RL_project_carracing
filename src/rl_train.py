@@ -320,6 +320,9 @@ class RL_Model():
                 current_screen = self.get_screen()
                 state = current_screen-last_screen
 
+            torch.cuda.empty_cache()
+            gc.collect()
+
         return avg_reward/num_episodes
 
     def generate_policy_video(self, filename="rl_model", num_episodes=1, fps=30):
@@ -348,6 +351,9 @@ class RL_Model():
                     if(done):
                         break
 
+            torch.cuda.empty_cache()
+            gc.collect()
+
         return True
 
 
@@ -360,10 +366,7 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
 d_actions = list(discrete_action_space.values())
 
 model = RL_Model(env, util.DQN, d_actions,
-                 num_training_episodes=1, max_episode_time=2000)
-
-# model.generate_policy_video("rl_progress_ep_" + str(0))
-
+                 num_training_episodes=100, max_episode_time=3000)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
