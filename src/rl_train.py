@@ -38,6 +38,14 @@ if is_ipython:
 
 plt.ion()
 '''
+res_preprocess = T.Compose([
+    T.ToPILImage(),
+    T.Resize(256),
+    # T.CenterCrop(224),
+    T.ToTensor(),
+    T.Normalize(mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]),
+])
 
 resize = T.Compose([T.ToPILImage(),
                     T.Resize(40, interpolation=Image.CUBIC),
@@ -161,7 +169,8 @@ class RL_Model():
         #screen = screen.transpose((2, 0, 1))
         #screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         #screen = torch.from_numpy(screen)
-        return resize(screen).unsqueeze(0).to(self.device)
+        screen = res_preprocess(screen).unsqueeze(0).to(self.device)
+        return screen
 
     def select_action(self, state):
         sample = random.random()
@@ -398,7 +407,8 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
 
 d_actions = list(discrete_action_space.values())
 
-#test = util.RES_DQN(30, 30, 5)
+#test = util.RES_DQN_COMBINED(30, 30, 5)
+# print(test)
 # for p in test.parameters():
 #    print(p)
 # exit(0)

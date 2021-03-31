@@ -158,12 +158,16 @@ class RES_DQN_COMBINED(nn.Module):
         self.feature_extractor = nn.Sequential(*self.children_list)
         self.pretrained = None
 
-        self.fc1 = nn.Linear(2048, 1000)
-        self.fc2 = nn.Linear(1000, outputs)
+        #self.fc1 = nn.Linear(512, 64)
+        self.fc1 = nn.Linear(49152, 64)
+        self.fc2 = nn.Linear(64, outputs)
 
     def forward(self, x):
+        # print(x.shape)
         x = self.feature_extractor(x)
+        # print(x.shape)
         x = x.view(x.size(0), -1)
+        # print(x.shape)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
 
