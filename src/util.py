@@ -138,19 +138,15 @@ class DQN(nn.Module):
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
-        try:
-            x = F.relu(self.bn1(self.conv1(x)))
-            x = F.relu(self.bn2(self.conv2(x)))
-            x = F.relu(self.bn3(self.conv3(x)))
-            return self.head(x.view(x.size(0), -1))
-        except:
-            print(x)
-            return self.head(x.view(x.size(0), -1))
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        return self.head(x.view(x.size(0), -1))
 
 
-class RES_DQN(nn.Module):
-    def __init__(self, h, w, outputs):
-        super(RES_DQN, self).__init__()
+class RES_DQN_COMBINED(nn.Module):
+    def __init__(self, w, h, outputs):
+        super(RES_DQN_COMBINED, self).__init__()
         self.pretrained = models.resnet18(pretrained=True)
         self.children_list = []
         for n, c in self.pretrained.named_children():
@@ -165,14 +161,49 @@ class RES_DQN(nn.Module):
         self.fc1 = nn.Linear(2048, 1000)
         self.fc2 = nn.Linear(1000, outputs)
 
-    def parameters(self):
-        return chain(self.fc1.parameters(), self.fc2.parameters())
-
     def forward(self, x):
         x = self.feature_extractor(x)
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
+
+        return x
+
+
+class RES_NET18(nn.Module):
+    def __init__(self):
+        super(RES_NET18, self).__init__()
+        self.pretrained = models.resnet18(pretrained=True)
+        self.children_list = []
+        for n, c in self.pretrained.named_children():
+            self.children_list.append(c)
+
+            if n == "layer4":
+                break
+
+        self.feature_extractor = nn.Sequential(*self.children_list)
+        self.pretrained = None
+
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = x.view(x.size(0), -1)
+        print(x.shape)
+        return x
+
+
+class RES_DQN(nn.Module):
+    def __init__(self, h, w, outputs):
+        super(RES_DQN, self).__init__()
+
+        self.fc2 = nn.Linear(2048, 1000)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.fc3 = nn.Linear(1000, outputs)
+
+    def forward(self, x):
+        print(x.shape)
+        x = F.relu(self.fc2(x))
+        # x = F.relu(self.bn1(self.fc2(x)))
+        x = self.fc3(x.view(x.size(0), -1))
         return x
 
 

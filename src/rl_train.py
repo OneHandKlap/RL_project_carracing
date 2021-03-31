@@ -66,7 +66,7 @@ class RL_Model():
 
     # Creates a new RL Model, given a Gym Environment,
     # NeuralNetwork Class and optional Action Space
-    def __init__(self, env, nn, action_space, env_string=None, batch_size=128, memory_capacity=7500, num_training_episodes=50, max_episode_time=3000, gamma=0.999, eps_start=0.9, eps_end=0.05, eps_decay=200, target_update=10, env_clear=5):
+    def __init__(self, env, nn, action_space, feature_extractor=None, env_string=None, batch_size=128, memory_capacity=7500, num_training_episodes=50, max_episode_time=3000, gamma=0.999, eps_start=0.9, eps_end=0.05, eps_decay=200, target_update=10, env_clear=5):
         # set env
         self.env = env
         self.batch_size = batch_size
@@ -96,17 +96,25 @@ class RL_Model():
         # policy net
         self.policy = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
-        self.policy.feature_extractor.to(self.device)
+        # self.policy.feature_extractor.to(self.device)
 
         # target net
         self.target = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
-        self.target.feature_extractor.to(self.device)
+       # self.target.feature_extractor.to(self.device)
         self.target.load_state_dict(self.policy.state_dict())
         self.target.eval()
 
         # optimizer
-        self.optimizer = optim.RMSprop(self.policy.parameters())
+        # update parameters
+        update_parameters = []
+        for p in self.policy.fc1.parameters():
+            update_parameters.append(p)
+        for p in self.policy.fc2.parameters():
+            update_parameters.append(p)
+
+        # self.policy.parameters())
+        self.optimizer = optim.RMSprop(update_parameters)
 
         # memory
         self.memory = util.ReplayMemory(self.memory_capacity)
@@ -115,6 +123,13 @@ class RL_Model():
         self.steps_taken = 0
 
         self.episode_durations = []
+
+        # feature extractor
+        if feature_extractor:
+            self.feature_extractor = feature_extractor()
+            self.feature_extractor.to(self.device)
+        else:
+            self.feature_extractor = None
 
     # load policy-net weights
     def load(self, path="rl_model_weights.pth"):
@@ -143,9 +158,9 @@ class RL_Model():
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
         # screen = screen[np.ix_([x for x in range(100, 400)], [x for x in range(200, 400)])]
-        screen = screen.transpose((2, 0, 1))
-        screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
-        screen = torch.from_numpy(screen)
+        #screen = screen.transpose((2, 0, 1))
+        #screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
+        #screen = torch.from_numpy(screen)
         return resize(screen).unsqueeze(0).to(self.device)
 
     def select_action(self, state):
@@ -159,12 +174,17 @@ class RL_Model():
                 # t.max(1) will return largest column value of each row.
                 # second column on max result is index of where max element was
                 # found, so we pick action with the larger expected reward.
+                if self.feature_extractor:
+                    return self.policy(self.feature_extractor.forward(state)).max(1)[1].view(1, 1)
+
                 return self.policy(state).max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randrange(len(self.action_space))]], device=self.device, dtype=torch.long)
 
     def select_deterministic_action(self, state):
         with torch.no_grad():
+            if self.feature_extractor:
+                return self.policy(self.feature_extractor.forward(state)).max(1)[1].view(1, 1)
             return self.policy(state).max(1)[1].view(1, 1)
 
     def optimize_model(self):
@@ -192,7 +212,12 @@ class RL_Model():
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
         # for each batch state according to policy_net
-        state_action_values = self.policy(state_batch).gather(1, action_batch)
+        if self.feature_extractor:
+            state_action_values = self.policy(
+                self.feature_extractor.forward(state_batch)).gather(1, action_batch)
+        else:
+            state_action_values = self.policy(
+                state_batch).gather(1, action_batch)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
@@ -248,8 +273,8 @@ class RL_Model():
         plt_color = [(random.random(), random.random(), random.random())]
         for i_ep in range(1, self.num_training_episodes+1):
             print("EPOCH: " + str(epoch) + " EPISODE: " + str(i_ep))
-            print("MEM ALLOCATED: " + str(torch.cuda.memory_allocated()))
-            print("MEM CACHE: " + str(torch.cuda.memory_reserved()))
+            print("MEM Used: " + str(100 - ((torch.cuda.memory_reserved(0) -
+                                             torch.cuda.memory_allocated(0))/torch.cuda.memory_reserved(0) * 100)) + "%")
             print('Ram Used: %f' % memory_used())
 
             # reset env and state
@@ -294,6 +319,8 @@ class RL_Model():
                 # Check if past step limit
                 if t > self.max_episode_time:
                     break
+
+            print("REWARD: " + str(acc_rewards[i_ep-1]))
 
             # Update target network, copy all weights and biases
             if i_ep % self.target_update == 0:
@@ -346,7 +373,7 @@ class RL_Model():
 
                 for i in range(self.max_episode_time):
                     action = self.select_deterministic_action(state)
-                    # action = self.select_action(state)
+
                     _, reward, done, _ = self.env.step(
                         self.action_space[action.item()])
                     video.append_data(self.env.render(mode="rgb_array"))
@@ -371,23 +398,22 @@ discrete_action_space = {"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go":
 
 d_actions = list(discrete_action_space.values())
 
-# test = util.res_dqn(30, 30, 5)
-# print(test)
+#test = util.RES_DQN(30, 30, 5)
+# for p in test.parameters():
+#    print(p)
+# exit(0)
 
-model = RL_Model(env, util.RES_DQN, d_actions,
-                 num_training_episodes=10, max_episode_time=2000, batch_size=512)
+model = RL_Model(env, util.RES_DQN_COMBINED, d_actions, feature_extractor=None,
+                 num_training_episodes=100, max_episode_time=2000, batch_size=32)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
-    model.save("results/rl_progress_ep_" + str(i * 10))
-    model.generate_policy_video("results/rl_progress_ep_" + str(i*10))
-
-    avg_reward = model.test(1, epoch=i)
+    model.save("results/rl_progress_ep_" + str(i * 100))
+    model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
+    avg_reward = model.test(5, epoch=i)
     plt.title('Rewards Over Epochs')
     plt.xlabel('Epochs')
     plt.ylabel('Rewards')
     plt.scatter(i, avg_reward, color="blue")
     plt.legend()
     plt.savefig("results/rl_progress_fig.png")
-    torch.cuda.empty_cache()
-    gc.collect()
