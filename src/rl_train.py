@@ -28,6 +28,7 @@ def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
+'''
 display = Display(visible=0, size=(1400, 900))
 display.start()
 
@@ -36,6 +37,7 @@ if is_ipython:
     from IPython import display
 
 plt.ion()
+'''
 
 res_preprocess = T.Compose([
     T.ToPILImage(),
@@ -115,13 +117,14 @@ class RL_Model():
         # optimizer
         # update parameters
         update_parameters = []
-        for p in self.policy.fc1.parameters():
-            update_parameters.append(p)
-        for p in self.policy.fc2.parameters():
-            update_parameters.append(p)
+        for n, p in self.policy.named_parameters():
+            if p.requires_grad:
+                update_parameters.append(p)
+                # print(n)
 
         # self.policy.parameters())
-        self.optimizer = optim.RMSprop(update_parameters)
+        #self.optimizer = optim.RMSprop(update_parameters)
+        self.optimizer = optim.SGD(update_parameters, lr=0.001, momentum=0.9)
 
         # memory
         self.memory = util.ReplayMemory(self.memory_capacity)
@@ -240,15 +243,15 @@ class RL_Model():
         expected_state_action_values = (
             next_state_values * self.gamma) + reward_batch
 
+        self.optimizer.zero_grad()
         # Compute Huber loss
         loss = F.smooth_l1_loss(state_action_values,
                                 expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
-        self.optimizer.zero_grad()
         loss.backward()
-        for param in self.policy.parameters():
-            param.grad.data.clamp_(-1, 1)
+        # for param in self.policy.parameters():
+        #    param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
         # del non_final_mask
@@ -293,8 +296,7 @@ class RL_Model():
 
             for t in count():
                 if render:
-                    plt.imshow(self.get_screen().cpu().squeeze(
-                        0).permute(1, 2, 0).numpy(), interpolation='none')
+                    plt.imshow(self.env.render(mode="rgb_array"))
                     plt.draw()
                     plt.pause(1e-3)
 
@@ -412,8 +414,9 @@ d_actions = list(discrete_action_space.values())
 #    print(p)
 # exit(0)
 
-model = RL_Model(env, util.RES_DQN_COMBINED, d_actions, feature_extractor=None,
-                 num_training_episodes=5, max_episode_time=2000, batch_size=64)
+model = RL_Model(env, util.SQUEEZE_DQN, d_actions, feature_extractor=None,
+                 num_training_episodes=5, max_episode_time=2000, batch_size=32)
+
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)

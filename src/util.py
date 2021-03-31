@@ -144,6 +144,22 @@ class DQN(nn.Module):
         return self.head(x.view(x.size(0), -1))
 
 
+def SQUEEZE_DQN(w, h, outputs):
+    model = models.squeezenet1_0(pretrained=True)
+    for p in model.parameters():
+        p.requires_grad = False
+
+    model.classifier[1] = nn.Conv2d(
+        512, outputs, kernel_size=(1, 1), stride=(1, 1))
+    for p in model.classifier[1].parameters():
+        p.requires_grad = True
+    model.num_classes = outputs
+
+    # print(model)
+
+    return model
+
+
 class RES_DQN_COMBINED(nn.Module):
     def __init__(self, w, h, outputs):
         super(RES_DQN_COMBINED, self).__init__()
@@ -166,7 +182,7 @@ class RES_DQN_COMBINED(nn.Module):
         x = self.feature_extractor(x)
         # print(x.shape)
         x = x.view(x.size(0), -1)
-        #print(x.shape)
+        # print(x.shape)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
 
