@@ -105,6 +105,7 @@ class RL_Model():
         # policy net
         self.policy = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
+        print(self.policy)
         # self.policy.feature_extractor.to(self.device)
 
         # target net
@@ -243,15 +244,16 @@ class RL_Model():
         expected_state_action_values = (
             next_state_values * self.gamma) + reward_batch
 
-        self.optimizer.zero_grad()
         # Compute Huber loss
         loss = F.smooth_l1_loss(state_action_values,
                                 expected_state_action_values.unsqueeze(1))
 
         # Optimize the model
+        self.optimizer.zero_grad()
         loss.backward()
-        # for param in self.policy.parameters():
-        #    param.grad.data.clamp_(-1, 1)
+        for param in self.policy.parameters():
+            if param.grad != None:
+                param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
         # del non_final_mask
@@ -415,7 +417,7 @@ d_actions = list(discrete_action_space.values())
 # exit(0)
 
 model = RL_Model(env, util.SQUEEZE_DQN, d_actions, feature_extractor=None,
-                 num_training_episodes=5, max_episode_time=2000, batch_size=32)
+                 num_training_episodes=5, max_episode_time=2000, batch_size=64)
 
 
 for i in range(1, 20):
