@@ -145,7 +145,7 @@ class DQN(nn.Module):
 
 
 def SQUEEZE_DQN(w, h, outputs):
-    model = models.squeezenet1_0(pretrained=True)
+    model = models.squeezenet1_1(pretrained=True)
     for p in model.parameters():
         p.requires_grad = False
 

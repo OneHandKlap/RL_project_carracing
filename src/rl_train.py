@@ -105,7 +105,7 @@ class RL_Model():
         # policy net
         self.policy = nn(screen_height, screen_width,
                          len(self.action_space)).to(self.device)
-        print(self.policy)
+        print(summary(self.policy, (3, 224, 224)))
         # self.policy.feature_extractor.to(self.device)
 
         # target net
@@ -124,8 +124,8 @@ class RL_Model():
                 # print(n)
 
         # self.policy.parameters())
-        #self.optimizer = optim.RMSprop(update_parameters)
-        self.optimizer = optim.SGD(update_parameters, lr=0.001, momentum=0.9)
+        self.optimizer = optim.RMSprop(update_parameters)
+        #self.optimizer = optim.SGD(update_parameters, lr=0.001, momentum=0.9)
 
         # memory
         self.memory = util.ReplayMemory(self.memory_capacity)
@@ -417,14 +417,14 @@ d_actions = list(discrete_action_space.values())
 # exit(0)
 
 model = RL_Model(env, util.SQUEEZE_DQN, d_actions, feature_extractor=None,
-                 num_training_episodes=5, max_episode_time=2000, batch_size=64)
+                 num_training_episodes=5, max_episode_time=1000, batch_size=2)
 
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
     model.save("results/rl_progress_ep_" + str(i * 100))
     model.generate_policy_video("results/rl_progress_ep_" + str(i*100))
-    avg_reward = model.test(5, epoch=i)
+    avg_reward = model.test(1, epoch=i)
     plt.title('Rewards Over Epochs')
     plt.xlabel('Epochs')
     plt.ylabel('Rewards')
