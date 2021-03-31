@@ -28,7 +28,6 @@ def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
-'''
 display = Display(visible=0, size=(1400, 900))
 display.start()
 
@@ -37,11 +36,11 @@ if is_ipython:
     from IPython import display
 
 plt.ion()
-'''
+
 res_preprocess = T.Compose([
     T.ToPILImage(),
     T.Resize(256),
-    # T.CenterCrop(224),
+    T.CenterCrop(224),
     T.ToTensor(),
     T.Normalize(mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]),
@@ -414,7 +413,7 @@ d_actions = list(discrete_action_space.values())
 # exit(0)
 
 model = RL_Model(env, util.RES_DQN_COMBINED, d_actions, feature_extractor=None,
-                 num_training_episodes=100, max_episode_time=2000, batch_size=32)
+                 num_training_episodes=5, max_episode_time=2000, batch_size=64)
 
 for i in range(1, 20):
     ep, rewards = model.train(render=False, epoch=i)
