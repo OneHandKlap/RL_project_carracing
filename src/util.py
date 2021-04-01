@@ -25,6 +25,8 @@ import Box2D
 from Box2D.b2 import contactListener
 from torchvision import models
 
+from torchsummary import summary
+
 
 def remove_outliers(x, constant):
     a = np.array(x)
@@ -142,6 +144,23 @@ class DQN(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         return self.head(x.view(x.size(0), -1))
+
+
+def MOBILE_DQN(w, h, outputs):
+    model = models.mobilenet_v2(pretrained=True)
+    for p in model.parameters():
+        p.requires_grad = False
+
+    #summary(model, (3, 224, 224))
+
+    model.classifier[1] = nn.Linear(1280, outputs)
+    for p in model.classifier[1].parameters():
+        p.requires_grad = True
+    model.num_classes = outputs
+
+    # print(model)
+
+    return model
 
 
 def SQUEEZE_DQN(w, h, outputs):

@@ -416,7 +416,7 @@ d_actions = list(discrete_action_space.values())
 #    print(p)
 # exit(0)
 
-model = RL_Model(env, util.SQUEEZE_DQN, d_actions, feature_extractor=None,
+model = RL_Model(env, util.MOBILE_DQN, d_actions, feature_extractor=None,
                  num_training_episodes=5, max_episode_time=1000, batch_size=2)
 
 
