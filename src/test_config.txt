@@ -1,0 +1,43 @@
+
+env:	<CarRacing<CarRacing-v0>>
+batch_size:	128
+memory_capacity:	7000
+num_training_episodes:	20
+max_episode_time:	100
+gamma:	0.999
+eps_start:	0.9
+eps_end:	0.05
+eps_decay:	200
+target_update:	10
+device:	cuda
+action_space:	[[-1, 0, 0], [1, 0, 0], [0, 1, 0], [-1, 1, 0], [1, 1, 0], [0, 0, 1], [-1, 0, 1], [1, 0, 1], [-0.3, 0, 0], [0.3, 0, 0], [0, 0.3, 0], [-0.3, 0.3, 0], [0.3, 0.3, 0], [0, 0, 0.3], [-0.3, 0, 0.3], [0.3, 0, 0.3]]
+policy:	DQN(
+  (conv1): Conv2d(3, 16, kernel_size=(5, 5), stride=(2, 2))
+  (bn1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv2): Conv2d(16, 32, kernel_size=(5, 5), stride=(2, 2))
+  (bn2): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv3): Conv2d(32, 32, kernel_size=(5, 5), stride=(2, 2))
+  (bn3): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (head): Linear(in_features=256, out_features=16, bias=True)
+)
+target:	DQN(
+  (conv1): Conv2d(3, 16, kernel_size=(5, 5), stride=(2, 2))
+  (bn1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv2): Conv2d(16, 32, kernel_size=(5, 5), stride=(2, 2))
+  (bn2): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv3): Conv2d(32, 32, kernel_size=(5, 5), stride=(2, 2))
+  (bn3): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (head): Linear(in_features=256, out_features=16, bias=True)
+)
+optimizer:	RMSprop (
+Parameter Group 0
+    alpha: 0.99
+    centered: False
+    eps: 1e-08
+    lr: 0.01
+    momentum: 0
+    weight_decay: 0
+)
+memory:	<util.ReplayMemory object at 0x0000021E7D6451F0>
+steps_taken:	0
+episode_durations:	[]
