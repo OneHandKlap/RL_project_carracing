@@ -4,8 +4,13 @@ from config.baseline import config
 from models.dqn_basic import DQN_Basic
 
 import matplotlib.pyplot as plt
+import torch
+import psutil
+import os
 
 from util.generate_video import generate_policy_video
+
+from wrappers.memory_wrapper import MemoryWrapper
 
 import gym
 
@@ -22,8 +27,23 @@ if HEADLESS:
 
     plt.ion()
 
-env = gym.make("CarRacing-v0")
+env = MemoryWrapper(lambda: gym.make("CarRacing-v0"))
 agent = DQN_Agent(env, DQN_Basic, config)
+
+
+def memory_used():
+    return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
+
+
+def memory_usage(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
+    print(f"RAM: {memory_used()} - CUDA: {(100 - ((torch.cuda.memory_reserved(0) - torch.cuda.memory_allocated(0))/torch.cuda.memory_reserved(0) * 100))}%")
+    '''
+    plt.title('Ram over Time')
+    plt.xlabel('Episodes')
+    plt.ylabel('RAM')
+    plt.scatter((epoch+1) * (episode+1), memory_used(), color="blue")
+    plt.savefig("results/ram.png")
+    '''
 
 
 def log(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
@@ -32,7 +52,7 @@ def log(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
 
 def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
     plt.title('Rewards Over Episodes')
-    plt.xlabel('Epochs')
+    plt.xlabel('Episodes')
     plt.ylabel('Rewards')
     plt.scatter((epoch+1) * (episode+1), ep_reward, color="blue")
     plt.savefig("results/plt.png")
@@ -45,6 +65,6 @@ def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
         generate_policy_video(agent, env, filename=f"results/video_{epoch}_{episode}")
 
 
-agent.train(render=False, callbacks=[log, plot, save])
+agent.train(render=False, callbacks=[log, memory_usage, plot, save])
 # agent.load("results/rl_model_weights_0_4.pth")
 #generate_policy_video(agent, env, filename=f"tester")
