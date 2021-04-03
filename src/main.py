@@ -26,4 +26,4 @@ def f(epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
     print(f"EPOCH: {epoch} - EPISODE: {episode} - REWARD: {ep_reward} - LOSS: {ep_loss} - EPSILON: {epsilon} - NUM_STEPS: {num_steps}")
 
 
-agent.train(render=True, callbacks=[f])
+agent.train(render=False, callbacks=[f])

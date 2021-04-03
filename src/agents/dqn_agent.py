@@ -88,8 +88,8 @@ class DQN_Agent():
     # return the transformed state of the environment
     def get_screen(self):
         screen = self.env.render(mode='rgb_array')
-        screen = screen[np.ix_([x for x in range(100, 400)], [
-                               x for x in range(200, 400)])]
+        # screen = screen[np.ix_([x for x in range(100, 400)], [
+        #                       x for x in range(200, 400)])]
         screen = screen.transpose((2, 0, 1))
         screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         screen = torch.from_numpy(screen)
@@ -223,9 +223,10 @@ class DQN_Agent():
                     self.replay_memory.append(state, action, next_state, step_reward)
 
                     # step reward counter
-                    if step_reward <= 0 and num_steps > 1000:
+                    if step_reward < 0 and num_steps > 200:
                         negative_reward_count += 1
-                        if negative_reward_count > 10:
+
+                        if negative_reward_count > 30:
                             break
                     else:
                         negative_reward_count = 0
@@ -236,3 +237,6 @@ class DQN_Agent():
                 # run callbacks
                 for c in callbacks:
                     c(epoch, episode, ep_reward, ep_loss, self.epsilon, num_steps)
+
+                if episode % self.config["TARGET_UPDATE_INTERVAL"] == 0:
+                    self.target.load_state_dict(self.model.state_dict())
