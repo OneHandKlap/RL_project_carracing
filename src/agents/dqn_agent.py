@@ -179,8 +179,8 @@ class DQN_Agent():
             number_of_epochs = self.config['NUMBER_OF_EPOCHS']
 
         # train
-        for epoch in range(number_of_epochs):
-            for episode in range(episodes_per_epoch):
+        for epoch in range(1, number_of_epochs + 1):
+            for episode in range(1, episodes_per_epoch + 1):
                 # reset env
                 self.env.reset()
                 init_state = self.get_screen()
