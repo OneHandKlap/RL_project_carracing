@@ -54,7 +54,7 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
     plt.title('Rewards Over Episodes')
     plt.xlabel('Episodes')
     plt.ylabel('Rewards')
-    plt.scatter((epoch+1) * (episode+1), ep_reward, color="blue")
+    plt.scatter((epoch * 100) + episode, ep_reward, color="blue")
     plt.savefig("results/plt.png")
 
 
