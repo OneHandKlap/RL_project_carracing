@@ -59,12 +59,12 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     ax1.set_title('Rewards Over Episodes')
     ax1.set_xlabel('Episodes')
     ax1.set_ylabel('Rewards')
-    ax1.scatter((epoch * 100) + episode, ep_reward, color="blue")
+    ax1.scatter(((epoch-1) * 100) + episode, ep_reward, color="blue")
 
     ax2.set_title('Loss Over Episodes')
     ax2.set_xlabel('Episodes')
     ax2.set_ylabel('Loss')
-    ax2.scatter((epoch * 100) + episode, ep_loss, color="red")
+    ax2.scatter(((epoch-1) * 100) + episode, ep_loss/num_steps, color="red")
 
     ax3.set_title('Duration Over Episodes')
     ax3.set_ylabel('Duration')
