@@ -59,7 +59,7 @@ fig3, (ax3) = plt.subplots(1, constrained_layout=True)
 fig4, (ax4) = plt.subplots(1, constrained_layout=True)
 
 
-def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
+def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
     ax1.set_title('Rewards Over Episodes')
     ax1.set_xlabel('Episodes')
     ax1.set_ylabel('Rewards')
