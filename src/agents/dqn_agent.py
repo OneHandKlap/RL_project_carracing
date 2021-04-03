@@ -76,14 +76,13 @@ class DQN_Agent():
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # save model-net weights
-    def save(self, path="rl_model_weights"):
+    def save(self, path="rl_model_weights.pth"):
         torch.save({
             'config': self.config,
             'model_state_dict': self.model.state_dict(),
             'target_state_dict': self.target.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-        },
-            path + ".pth")
+        }, path)
 
     # return the transformed state of the environment
     def get_screen(self):
@@ -99,7 +98,7 @@ class DQN_Agent():
 
     # select and taken an action on the environment, returning reward
     def act(self, state, deterministic=False):
-        if np.random.rand() > self.epsilon:
+        if np.random.rand() > self.epsilon or deterministic == True:
             with torch.no_grad():
                 return self.model(state).max(1)[1].view(1, 1)
         else:
@@ -184,8 +183,6 @@ class DQN_Agent():
                 screen_stack = deque([init_state] * self.config['FRAME_STACK'], maxlen=self.config['FRAME_STACK'])
                 state = torch.cat(list(screen_stack), dim=1)
 
-                frame_count = 0
-
                 ep_reward = 0
                 num_steps = 0
                 ep_loss = 0
@@ -198,8 +195,6 @@ class DQN_Agent():
                         plt.draw()
                         plt.pause(1e-3)
 
-                    num_steps += 1
-
                     # pick an action
                     action = self.act(state)
 
@@ -207,6 +202,7 @@ class DQN_Agent():
 
                     # do the action
                     for _ in range(self.config["FRAME_SKIP"]):
+                        num_steps += 1
                         next_state, reward, done, _ = self.env.step(self.config["ACTION_SPACE"][action.item()])
                         step_reward += reward
                         if done:
@@ -218,6 +214,7 @@ class DQN_Agent():
                     # generate next state stack
                     screen_stack.append(self.get_screen())
                     next_state = torch.cat(list(screen_stack), dim=1) if not done else None
+                    state = next_state
 
                     # append to replay memory
                     self.replay_memory.append(state, action, next_state, step_reward)
@@ -236,7 +233,7 @@ class DQN_Agent():
 
                 # run callbacks
                 for c in callbacks:
-                    c(epoch, episode, ep_reward, ep_loss, self.epsilon, num_steps)
+                    c(self, epoch, episode, ep_reward, ep_loss, self.epsilon, num_steps)
 
                 if episode % self.config["TARGET_UPDATE_INTERVAL"] == 0:
                     self.target.load_state_dict(self.model.state_dict())
