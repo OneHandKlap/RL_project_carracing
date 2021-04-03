@@ -5,7 +5,7 @@ config = {
     "NUMBER_OF_EPOCHS": 10,  # for training
     "SAVE_INTERVAL": 100,  # episode intervals to save model
     "FRAME_SKIP": 1,  # number of frames to skip per action
-    "FRAME_STACK": 1,  # number of frames to stack
+    "FRAME_STACK": 4,  # number of frames to stack
     "GAMMA": 0.999,  # discount factor
     "EPSILON": 1.0,  # exploration rate
     "EPSILON_MIN": 0.1,  # min epsilon

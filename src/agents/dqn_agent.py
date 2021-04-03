@@ -1,13 +1,16 @@
-from util.replay_memory import ReplayMemory
+from util.replay_memory import ReplayMemory, Transition
 
 from collections import deque
 
 import numpy as np
 import random
 import torchvision.transforms as T
+import torch.nn.functional as F
 import torch
 import torch.optim as optim
 from PIL import Image
+import matplotlib.pyplot as plt
+
 
 '''
 DQN_Agent Class Providing Vanilla DQN Learning Capabilities
@@ -39,11 +42,11 @@ class DQN_Agent():
         self.replay_memory = ReplayMemory(self.config['MEMORY_CAPACITY'])
 
         # model net
-        self.model = dqn(screen_width, screen_height,
+        self.model = dqn(screen_width, screen_height, self.config["FRAME_STACK"],
                          len(self.config['ACTION_SPACE'])).to(self.device)
 
         # target net
-        self.target = dqn(screen_width, screen_height,
+        self.target = dqn(screen_width, screen_height, self.config["FRAME_STACK"],
                           len(self.config['ACTION_SPACE'])).to(self.device)
         self.target.load_state_dict(self.model.state_dict())
         self.target.eval()
@@ -72,11 +75,11 @@ class DQN_Agent():
         # optimizer
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-    # save policy-net weights
+    # save model-net weights
     def save(self, path="rl_model_weights"):
         torch.save({
             'config': self.config,
-            'model_state_dict': self.policy.state_dict(),
+            'model_state_dict': self.model.state_dict(),
             'target_state_dict': self.target.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
         },
@@ -98,14 +101,15 @@ class DQN_Agent():
     def act(self, state, deterministic=False):
         if np.random.rand() > self.epsilon:
             with torch.no_grad():
-                return self.config["ACTION_SPACE"][self.model(state).max(1)[1].view(1, 1).item()]
+                return self.model(state).max(1)[1].view(1, 1)
         else:
-            return self.config["ACTION_SPACE"][torch.tensor([[random.randrange(len(self.config["ACTION_SPACE"]))]], device=self.device, dtype=torch.long).item()]
+            return torch.tensor([[random.randrange(len(self.config["ACTION_SPACE"]))]], device=self.device, dtype=torch.long)
 
     # optimize model based on replay memory, update weights of dqn and decay epsilon, return loss
     def learn(self):
+        running_loss = 0
         if len(self.replay_memory) < self.config['BATCH_SIZE']:
-            return 0
+            return running_loss
 
         # sample from replaymemory
         batch = self.replay_memory.sample(self.config['BATCH_SIZE'])
@@ -124,21 +128,21 @@ class DQN_Agent():
 
         # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
         # columns of actions taken. These are the actions which would've been taken
-        # for each batch state according to policy_net
-        state_action_values = self.policy(state_batch).gather(1, action_batch)
+        # for each batch state according to model_net
+        state_action_values = self.model(state_batch).gather(1, action_batch)
 
         # Compute V(s_{t+1}) for all next states.
         # Expected values of actions for non_final_next_states are computed based
         # on the "older" target_net; selecting their best reward with max(1)[0].
         # This is merged based on the mask, such that we'll have either the expected
         # state value or 0 in case the state was final.
-        next_state_values = torch.zeros(self.batch_size, device=self.device)
+        next_state_values = torch.zeros(self.config["BATCH_SIZE"], device=self.device)
         next_state_values[non_final_mask] = self.target(
             non_final_next_states).max(1)[0].detach()
 
         # Compute the expected Q values
         expected_state_action_values = (
-            next_state_values * self.gamma) + reward_batch
+            next_state_values * self.config["GAMMA"]) + reward_batch
 
         # Compute Huber loss
         loss = F.smooth_l1_loss(state_action_values,
@@ -152,14 +156,16 @@ class DQN_Agent():
                 param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
+        running_loss += loss.item()
+
         # decay epsilon
         if self.epsilon > self.config['EPSILON_MIN']:
             self.epsilon *= self.config['EPSILON_DECAY']
 
-        return loss.item()
+        return running_loss
 
     # main training loop, resets epsilon each time you run it, so only run it once
-    def train(self, episodes_per_epoch=None, number_of_epochs=None, callbacks=[]):
+    def train(self, episodes_per_epoch=None, number_of_epochs=None, callbacks=[], render=False):
         # reset epsilon
         self.epsilon = self.config['EPSILON']
 
@@ -175,7 +181,9 @@ class DQN_Agent():
                 # reset env
                 self.env.reset()
                 init_state = self.get_screen()
-                state_stack = deque([init_state] * self.config['FRAME_STACK'], maxlen=self.config['FRAME_STACK'])
+                screen_stack = deque([init_state] * self.config['FRAME_STACK'], maxlen=self.config['FRAME_STACK'])
+                state = torch.cat(list(screen_stack), dim=1)
+
                 frame_count = 0
 
                 ep_reward = 0
@@ -184,35 +192,38 @@ class DQN_Agent():
 
                 negative_reward_count = 0
 
-                for i in range(100):
+                while True:
+                    if render == True:
+                        plt.imshow(self.get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation='none')
+                        plt.draw()
+                        plt.pause(1e-3)
+
                     num_steps += 1
 
-                    # get current/last state stack
-                    last_state_stack = np.array(state_stack)
-
                     # pick an action
-                    action = self.act(last_state_stack)
+                    action = self.act(state)
 
                     step_reward = 0
 
                     # do the action
                     for _ in range(self.config["FRAME_SKIP"]):
-                        next_state, reward, done, _ = self.env.step(action)
+                        next_state, reward, done, _ = self.env.step(self.config["ACTION_SPACE"][action.item()])
                         step_reward += reward
                         if done:
                             break
 
                     ep_reward += step_reward
+                    step_reward = torch.tensor([reward], device=self.device)
 
                     # generate next state stack
-                    state_stack.append(next_state)
-                    next_stack_stack = np.array(state_stack)
+                    screen_stack.append(self.get_screen())
+                    next_state = torch.cat(list(screen_stack), dim=1) if not done else None
 
                     # append to replay memory
-                    self.replay_memory.append(last_state_stack, action, next_stack_stack, step_reward)
+                    self.replay_memory.append(state, action, next_state, step_reward)
 
                     # step reward counter
-                    if step_reward <= 0:
+                    if step_reward <= 0 and num_steps > 1000:
                         negative_reward_count += 1
                         if negative_reward_count > 10:
                             break

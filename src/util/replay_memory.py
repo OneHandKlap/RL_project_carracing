@@ -12,8 +12,5 @@ class ReplayMemory(deque):
     def append(self, *args):
         super().append(Transition(*args))
 
-    def sample(self, batch_size, batch=True):
-        if batch == True:
-            return Transition(*zip(*random.sample(self, batch_size)))
-
-        return random.sample(self, batch_size)
+    def sample(self, batch_size):
+        return Transition(*zip(*random.sample(self, batch_size)))
