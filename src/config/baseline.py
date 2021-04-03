@@ -3,7 +3,7 @@ config = {
     "MEMORY_CAPACITY": 7000,  # replay memory
     "EPISODES_PER_EPOCH": 100,  # for training
     "NUMBER_OF_EPOCHS": 10,  # for training
-    "FRAME_SKIP": 2,  # number of frames to skip per action
+    "FRAME_SKIP": 1,  # number of frames to skip per action
     "FRAME_STACK": 3,  # number of frames to stack
     "GAMMA": 0.999,  # discount factor
     "EPSILON": 1.0,  # exploration rate
