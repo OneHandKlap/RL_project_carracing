@@ -20,7 +20,7 @@ def generate_policy_video(agent, env, filename="rl_model", num_episodes=1, max_e
 
             while True:
                 # pick an action
-                action = agent.act(state)
+                action = agent.act(state,deterministic=True)
 
                 # do the action
                 for _ in range(agent.config["FRAME_SKIP"]):

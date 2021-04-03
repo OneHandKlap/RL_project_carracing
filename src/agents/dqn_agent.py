@@ -5,6 +5,7 @@ from collections import deque
 import numpy as np
 import random
 import torchvision.transforms as T
+from torch.optim.lr_scheduler import ExponentialLR
 import torch.nn.functional as F
 import torch
 import torch.optim as optim
@@ -57,7 +58,9 @@ class DQN_Agent():
             if p.requires_grad == True:
                 parameters_to_update.append(p)
 
-        self.optimizer = optim.Adam(parameters_to_update, lr=0.0001)  # optim.RMSprop(parameters_to_update)
+        self.optimizer = optim.Adam(parameters_to_update, lr=0.1)  # optim.RMSprop(parameters_to_update)
+        self.scheduler=ExponentialLR(self.optimizer,gamma=.99)
+        #
 
     def load(self, path="rl_model_weights.pth"):
         checkpoint = torch.load(path)
@@ -157,7 +160,9 @@ class DQN_Agent():
         for param in self.model.parameters():
             if param.grad != None:
                 param.grad.data.clamp_(-1, 1)
+        
         self.optimizer.step()
+        
 
         running_loss += loss.item()
 
@@ -240,7 +245,14 @@ class DQN_Agent():
 
                 # run callbacks
                 for c in callbacks:
-                    c(self, epoch, episode, ep_reward, ep_loss, self.epsilon, num_steps)
+                    c(self, epoch, episode, ep_reward, ep_loss/num_steps, self.epsilon, num_steps,self.scheduler.get_last_lr())
 
                 if episode % self.config["TARGET_UPDATE_INTERVAL"] == 0:
                     self.target.load_state_dict(self.model.state_dict())
+
+            #iterate scheduler after each epoch, comment out this step to prevent scheduler interference with optimizer
+            self.scheduler.step()
+            # print("\n\n\n"+str(self.scheduler.get_last_lr()))
+            # for param_group in self.optimizer.param_groups:
+            #     print(param_group['lr'])
+            
