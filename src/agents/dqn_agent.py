@@ -214,10 +214,10 @@ class DQN_Agent():
                     # generate next state stack
                     screen_stack.append(self.get_screen())
                     next_state = torch.cat(list(screen_stack), dim=1) if not done else None
-                    state = next_state
 
                     # append to replay memory
                     self.replay_memory.append(state, action, next_state, step_reward)
+                    state = next_state
 
                     # step reward counter
                     if step_reward < 0 and num_steps > 200:
@@ -230,6 +230,9 @@ class DQN_Agent():
 
                     # learn
                     ep_loss += self.learn()
+
+                    if done:
+                        break
 
                 # run callbacks
                 for c in callbacks:
