@@ -57,7 +57,7 @@ class DQN_Agent():
             if p.requires_grad == True:
                 parameters_to_update.append(p)
 
-        self.optimizer = optim.RMSprop(parameters_to_update)
+        self.optimizer = optim.Adam(parameters_to_update, lr=0.0001)  # optim.RMSprop(parameters_to_update)
 
     def load(self, path="rl_model_weights.pth"):
         checkpoint = torch.load(path)
@@ -98,7 +98,11 @@ class DQN_Agent():
 
     # select and taken an action on the environment, returning reward
     def act(self, state, deterministic=False):
-        if np.random.rand() > self.epsilon or deterministic == True:
+        if deterministic == True:
+            with torch.no_grad():
+                return self.target(state).max(1)[1].view(1, 1)
+
+        if np.random.rand() > self.epsilon:
             with torch.no_grad():
                 return self.model(state).max(1)[1].view(1, 1)
         else:

@@ -14,7 +14,7 @@ from wrappers.memory_wrapper import MemoryWrapper
 
 import gym
 
-HEADLESS = False
+HEADLESS = True
 
 if HEADLESS:
     from pyvirtualdisplay import Display
@@ -59,7 +59,7 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
 
 
 def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
-    if episode % 50 == 0:
+    if episode % 100 == 0:
         print("SAVING AGENT")
         agent.save(f"results/rl_model_weights_{epoch}_{episode}.pth")
         generate_policy_video(agent, env, filename=f"results/video_{epoch}_{episode}")

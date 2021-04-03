@@ -3,12 +3,12 @@ config = {
     "MEMORY_CAPACITY": 7000,  # replay memory
     "EPISODES_PER_EPOCH": 100,  # for training
     "NUMBER_OF_EPOCHS": 10,  # for training
-    "FRAME_SKIP": 1,  # number of frames to skip per action
+    "FRAME_SKIP": 2,  # number of frames to skip per action
     "FRAME_STACK": 3,  # number of frames to stack
     "GAMMA": 0.999,  # discount factor
     "EPSILON": 1.0,  # exploration rate
     "EPSILON_MIN": 0.1,  # min epsilon
-    "EPSILON_DECAY": 0.99999,  # rate at which epsilon decays
+    "EPSILON_DECAY": 0.9999,  # rate at which epsilon decays
     "TARGET_UPDATE_INTERVAL": 10,  # interval at which to update target Q,
     "ACTION_SPACE": list({"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0],
                           "go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1],
