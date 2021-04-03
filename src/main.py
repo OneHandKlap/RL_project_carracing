@@ -50,11 +50,23 @@ def log(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
     print(f"EPOCH: {epoch} - EPISODE: {episode} - REWARD: {ep_reward} - LOSS: {ep_loss} - EPSILON: {epsilon} - NUM_STEPS: {num_steps}")
 
 
+fig, (ax1, ax2, ax3) = plt.subplots(3)
+
+
 def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps):
-    plt.title('Rewards Over Episodes')
-    plt.xlabel('Episodes')
-    plt.ylabel('Rewards')
-    plt.scatter((epoch * 100) + episode, ep_reward, color="blue")
+    ax1.set_title('Rewards Over Episodes')
+    ax1.set_ylabel('Rewards')
+    ax1.scatter((epoch * 100) + episode, ep_reward, color="blue")
+
+    ax2.set_title('Loss Over Episodes')
+    ax2.set_xlabel('Episodes')
+    ax2.set_ylabel('Loss')
+    ax2.scatter((epoch * 100) + episode, ep_loss, color="red")
+
+    ax3.set_title('Duration Over Episodes')
+    ax3.set_xlabel('Episodes')
+    ax3.set_ylabel('Duration')
+    ax3.scatter((epoch * 100) + episode, num_steps, color="orange")
     plt.savefig("results/plt.png")
 
 
