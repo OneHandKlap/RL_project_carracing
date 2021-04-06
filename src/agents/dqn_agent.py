@@ -97,8 +97,8 @@ class DQN_Agent():
         #screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
         #screen = torch.from_numpy(screen)
         screen = T.Compose([T.ToPILImage(),
-                            T.Resize(256, interpolation=Image.CUBIC),
-                            T.CenterCrop(224),
+                            T.Resize(40, interpolation=Image.CUBIC),
+                            # T.CenterCrop(224),
                             T.ToTensor(),
                             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
                             ])(screen).unsqueeze(0).to(self.device)

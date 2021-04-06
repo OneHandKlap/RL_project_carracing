@@ -33,24 +33,24 @@ class DQN_Smort(nn.Module):
         self.mid = nn.Sequential(OrderedDict([
             ('conv1', nn.Conv2d(3, 16, kernel_size=5, stride=2)),
             ('bn1', nn.BatchNorm2d(16)),
-            ('max1', nn.MaxPool2d(2)),
+            #('max1', nn.MaxPool2d(2)),
             ('relu1', nn.ReLU()),
             ('conv2', nn.Conv2d(16, 32, kernel_size=5, stride=2)),
             ('bn2', nn.BatchNorm2d(32)),
-            ('max2', nn.MaxPool2d(2)),
+            #('max2', nn.MaxPool2d(2)),
             ('relu2', nn.ReLU()),
             ('conv3', nn.Conv2d(32, 32, kernel_size=5, stride=2)),
             ('bn3', nn.BatchNorm2d(32)),
-            ('avg1', nn.AvgPool2d(4)),
+            ('avg1', nn.AvgPool2d(2)),
             ('relu2', nn.ReLU()),
         ]))
 
-        self.rnn = nn.RNN(32, 64, num_layers=frame_stacks)
+        self.rnn = nn.RNN(64, 128, num_layers=frame_stacks)
 
-        self.head = nn.Linear(64, outputs)
+        self.head = nn.Linear(128, outputs)
 
     def init_hidden(self):
-        return Variable(torch.zeros(self.frame_stacks, 1, 64).to("cuda"))
+        return Variable(torch.zeros(self.frame_stacks, 1, 128).to("cuda"))
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
