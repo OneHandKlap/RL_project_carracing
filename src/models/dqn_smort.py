@@ -18,7 +18,7 @@ def MobileNet():
     #    p.requires_grad = True
     #model.num_classes = outputs
 
-    # #print(model)
+    # ##print(model)
 
     return model
 
@@ -33,11 +33,11 @@ class DQN_Smort(nn.Module):
         self.mid = nn.Sequential(OrderedDict([
             ('conv1', nn.Conv2d(3, 16, kernel_size=5, stride=2)),
             ('bn1', nn.BatchNorm2d(16)),
-            ('max1', nn.MaxPool2d(2)),
+            #('max1', nn.MaxPool2d(2)),
             ('relu1', nn.ReLU()),
             ('conv2', nn.Conv2d(16, 32, kernel_size=5, stride=2)),
             ('bn2', nn.BatchNorm2d(32)),
-            ('max2', nn.MaxPool2d(2)),
+            #('max2', nn.MaxPool2d(2)),
             ('relu2', nn.ReLU()),
             ('conv3', nn.Conv2d(32, 32, kernel_size=5, stride=2)),
             ('bn3', nn.BatchNorm2d(32)),
@@ -45,9 +45,9 @@ class DQN_Smort(nn.Module):
             ('relu2', nn.ReLU()),
         ]))
 
-        self.rnn = nn.RNN(128, 128)
+        self.rnn = nn.RNN(64, 128)
 
-        self.head = nn.Linear(128 * 3, outputs)
+        self.head = nn.Linear(128, outputs)
 
     def init_hidden(self):
         return Variable(torch.zeros(1, 1, 128).to("cuda"))
@@ -72,9 +72,11 @@ class DQN_Smort(nn.Module):
         # print(x_rnn.shape)
         self.hidden = self.init_hidden()
         out, self.hidden = self.rnn(x_rnn, self.hidden)
-        print(out.shape)
+        out = torch.tensor_split(out, self.frame_stacks, 0)
+        out = out[-1]
+        # print(out.shape)
         x = out.view(out.size(0), -1)
-        print(x.shape)
+        # print(x.shape)
         x = self.head(x)
-        print(x.shape)
+        # print(x.shape)
         return x

@@ -14,7 +14,7 @@ from wrappers.memory_wrapper import MemoryWrapper
 
 import gym
 
-HEADLESS = False
+HEADLESS = True
 
 if HEADLESS:
     from pyvirtualdisplay import Display
