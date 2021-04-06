@@ -47,7 +47,7 @@ class DQN_Smort(nn.Module):
 
         self.rnn = nn.RNN(128, 128)
 
-        self.head = nn.Linear(128, outputs)
+        self.head = nn.Linear(128 * 3, outputs)
 
     def init_hidden(self):
         return Variable(torch.zeros(1, 1, 128).to("cuda"))
@@ -72,7 +72,9 @@ class DQN_Smort(nn.Module):
         # print(x_rnn.shape)
         self.hidden = self.init_hidden()
         out, self.hidden = self.rnn(x_rnn, self.hidden)
-
-        x = self.head(out)
-
-        return x.view(x.size(0), -1)
+        print(out.shape)
+        x = out.view(out.size(0), -1)
+        print(x.shape)
+        x = self.head(x)
+        print(x.shape)
+        return x
