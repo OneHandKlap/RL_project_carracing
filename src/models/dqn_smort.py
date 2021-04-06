@@ -73,6 +73,6 @@ class DQN_Smort(nn.Module):
         self.hidden = self.init_hidden()
         out, self.hidden = self.rnn(x_rnn, self.hidden)
 
-        # print(out.shape)
+        x = self.head(out)
 
-        return output[0]
+        return x.view(x.size(0), -1)
