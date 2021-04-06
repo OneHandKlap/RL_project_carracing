@@ -1,7 +1,7 @@
 from agents.dqn_agent import DQN_Agent
 from config.baseline import config
 
-from models.dqn_basic import DQN_Basic
+from models.dqn_smort import DQN_Smort
 
 import matplotlib.pyplot as plt
 import torch
@@ -28,14 +28,14 @@ if HEADLESS:
     plt.ion()
 
 env = MemoryWrapper(lambda: gym.make("CarRacing-v0"))
-agent = DQN_Agent(env, DQN_Basic, config)
+agent = DQN_Agent(env, DQN_Smort, config)
 
 
 def memory_used():
     return psutil.Process(os.getpid()).memory_info().rss * 1e-6  # To megabyte
 
 
-def memory_usage(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps,lr):
+def memory_usage(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     print(f"RAM: {memory_used()} - CUDA: {(100 - ((torch.cuda.memory_reserved(0) - torch.cuda.memory_allocated(0))/torch.cuda.memory_reserved(0) * 100))}%")
     '''
     plt.title('Ram over Time')
@@ -46,14 +46,15 @@ def memory_usage(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps,l
     '''
 
 
-def log(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps,lr):
+def log(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     print(f"EPOCH: {epoch} - EPISODE: {episode} - REWARD: {ep_reward} - LOSS: {ep_loss} - EPSILON: {epsilon} - NUM_STEPS: {num_steps}")
 
 
 fig1, (ax1) = plt.subplots(1, constrained_layout=True)
 fig2, (ax2) = plt.subplots(1, constrained_layout=True)
 fig3, (ax3) = plt.subplots(1, constrained_layout=True)
-fig4, (ax4) = plt.subplots(1,constrained_layout=True)
+fig4, (ax4) = plt.subplots(1, constrained_layout=True)
+
 
 def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     ax1.set_title('Rewards Over Episodes')
@@ -71,7 +72,6 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     ax3.set_xlabel('Episodes')
     ax3.scatter((epoch * 100) + episode, num_steps, color="orange")
 
-
     ax4.set_title('Learning Rate')
     ax4.set_ylabel('Duration')
     ax4.set_xlabel('Episodes')
@@ -83,7 +83,7 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     fig4.savefig("results/plt4.png")
 
 
-def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps,lr):
+def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     if episode % 100 == 0:
         print("SAVING AGENT")
         agent.save(f"results/rl_model_weights_{epoch}_{episode}.pth")

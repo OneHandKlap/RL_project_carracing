@@ -59,7 +59,7 @@ class DQN_Agent():
                 parameters_to_update.append(p)
 
         self.optimizer = optim.Adam(parameters_to_update, lr=0.1)  # optim.RMSprop(parameters_to_update)
-        self.scheduler=ExponentialLR(self.optimizer,gamma=.99)
+        self.scheduler = ExponentialLR(self.optimizer, gamma=.99)
         #
 
     def load(self, path="rl_model_weights.pth"):
@@ -92,12 +92,18 @@ class DQN_Agent():
         screen = self.env.render(mode='rgb_array')
         # screen = screen[np.ix_([x for x in range(100, 400)], [
         #                       x for x in range(200, 400)])]
-        screen = screen.transpose((2, 0, 1))
-        screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
-        screen = torch.from_numpy(screen)
-        return T.Compose([T.ToPILImage(),
-                          T.Resize(40, interpolation=Image.CUBIC),
-                          T.ToTensor()])(screen).unsqueeze(0).to(self.device)
+        #screen = screen.transpose((2, 0, 1))
+        # print(screen.shape)
+        #screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
+        #screen = torch.from_numpy(screen)
+        screen = T.Compose([T.ToPILImage(),
+                            T.Resize(256, interpolation=Image.CUBIC),
+                            T.CenterCrop(224),
+                            T.ToTensor(),
+                            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                            ])(screen).unsqueeze(0).to(self.device)
+
+        return screen
 
     # select and taken an action on the environment, returning reward
     def act(self, state, deterministic=False):
@@ -160,9 +166,8 @@ class DQN_Agent():
         for param in self.model.parameters():
             if param.grad != None:
                 param.grad.data.clamp_(-1, 1)
-        
+
         self.optimizer.step()
-        
 
         running_loss += loss.item()
 
@@ -245,14 +250,13 @@ class DQN_Agent():
 
                 # run callbacks
                 for c in callbacks:
-                    c(self, epoch, episode, ep_reward, ep_loss/num_steps, self.epsilon, num_steps,self.scheduler.get_last_lr())
+                    c(self, epoch, episode, ep_reward, ep_loss/num_steps, self.epsilon, num_steps, self.scheduler.get_last_lr())
 
                 if episode % self.config["TARGET_UPDATE_INTERVAL"] == 0:
                     self.target.load_state_dict(self.model.state_dict())
 
-            #iterate scheduler after each epoch, comment out this step to prevent scheduler interference with optimizer
+            # iterate scheduler after each epoch, comment out this step to prevent scheduler interference with optimizer
             self.scheduler.step()
             # print("\n\n\n"+str(self.scheduler.get_last_lr()))
             # for param_group in self.optimizer.param_groups:
             #     print(param_group['lr'])
-            
