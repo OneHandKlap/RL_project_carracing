@@ -6,6 +6,7 @@ config = {
     "FRAME_SKIP": 2,  # number of frames to skip per action
     "FRAME_STACK": 3,  # number of frames to stack
     "GAMMA": 0.999,  # discount factor
+    "SCHEDULER_GAMMA": 1,
     "EPSILON": 1.0,  # exploration rate
     "EPSILON_MIN": 0.1,  # min epsilon
     "LEARNING_RATE": 0.0001,  # alpha learning
