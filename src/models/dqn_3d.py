@@ -20,10 +20,9 @@ class DQN_3D(nn.Module):
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h)))
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(w,3), 2), 1)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(h,3), 2), 1)
         linear_input_size = convw * convh * 64
-
         self.head = nn.Linear(linear_input_size, outputs)
 
     # Called with either one element to determine next action, or a batch
@@ -40,8 +39,7 @@ class DQN_3D(nn.Module):
         x = F.relu(self.bn3(self.conv3(x)))
         # #print(x.shape)
         #x = F.relu(self.avg_pool(x))
-        # print(x.shape)
+        #print(x.shape)
         x = x.view(x.size(0), -1)
-        # print(x.shape)
-        # #print(x.shape)
+        #print(x.shape)
         return self.head(x)
