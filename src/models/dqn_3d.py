@@ -32,7 +32,7 @@ class DQN_3D(nn.Module):
         # #print(x.shape)
         #x = F.relu(self.bn3(self.conv3(x)))
         # print(x.shape)
-        x = self.avg_pool(x)
+        x = F.relu(self.avg_pool(x))
         # print(x.shape)
         x = x.view(x.size(0), -1)
         # print(x.shape)

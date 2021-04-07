@@ -58,8 +58,8 @@ class DQN_Agent():
             if p.requires_grad == True:
                 parameters_to_update.append(p)
 
-        self.optimizer = optim.Adam(parameters_to_update, lr=0.1)  # optim.RMSprop(parameters_to_update)
-        self.scheduler = ExponentialLR(self.optimizer, gamma=.99)
+        self.optimizer = optim.Adam(parameters_to_update, lr=self.config["LEARNING_RATE"])  # optim.RMSprop(parameters_to_update)
+        self.scheduler = ExponentialLR(self.optimizer, gamma=self.config['SCHEDULER_GAMMA'])
         #
 
     def load(self, path="rl_model_weights.pth"):

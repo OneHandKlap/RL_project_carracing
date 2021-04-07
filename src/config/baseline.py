@@ -6,10 +6,10 @@ config = {
     "FRAME_SKIP": 2,  # number of frames to skip per action
     "FRAME_STACK": 3,  # number of frames to stack
     "GAMMA": 0.999,  # discount factor
-    "SCHEDULER_GAMMA": 1,
+    "SCHEDULER_GAMMA": 1,  # scheduler gamma
     "EPSILON": 1.0,  # exploration rate
     "EPSILON_MIN": 0.1,  # min epsilon
-    "LEARNING_RATE": 0.0001,  # alpha learning
+    "LEARNING_RATE": 0.001,  # alpha learning
     "EPSILON_DECAY": 0.9999,  # rate at which epsilon decays
     "TARGET_UPDATE_INTERVAL": 10,  # interval at which to update target Q,
     "ACTION_SPACE": list({"turn_left": [-1, 0, 0], "turn_right": [1, 0, 0], "go": [0, 1, 0],

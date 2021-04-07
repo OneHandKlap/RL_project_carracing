@@ -1,7 +1,7 @@
 from agents.dqn_agent import DQN_Agent
 from config.baseline import config
 
-from models.dqn_smort import DQN_Smort
+from models.dqn_3d import DQN_3D
 
 import matplotlib.pyplot as plt
 import torch
@@ -28,7 +28,7 @@ if HEADLESS:
     plt.ion()
 
 env = MemoryWrapper(lambda: gym.make("CarRacing-v0"))
-agent = DQN_Agent(env, DQN_Smort, config)
+agent = DQN_Agent(env, DQN_3D, config)
 
 
 def memory_used():
@@ -70,12 +70,12 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     ax3.set_title('Duration Over Episodes')
     ax3.set_ylabel('Duration')
     ax3.set_xlabel('Episodes')
-    ax3.scatter((epoch * 100) + episode, num_steps, color="orange")
+    ax3.scatter(((epoch-1) * 100) + episode, num_steps, color="orange")
 
     ax4.set_title('Learning Rate')
     ax4.set_ylabel('Duration')
     ax4.set_xlabel('Episodes')
-    ax4.scatter((epoch * 100) + episode, lr, color="orange")
+    ax4.scatter(((epoch-1) * 100) + episode, lr, color="orange")
 
     fig1.savefig("results/plt1.png")
     fig2.savefig("results/plt2.png")
