@@ -98,7 +98,7 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
 
     if episode % 100 == 0:
         print("SAVING DATA")
-        np.savetxt("results/data.txt", np.array([rewards_total, loss_total, num_steps_total, epsilon_total, lr_total]))
+        np.save("results/data", np.array([rewards_total, loss_total, num_steps_total, epsilon_total, lr_total]))
 
 
 def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
