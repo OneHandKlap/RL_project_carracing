@@ -3,6 +3,8 @@ from config.baseline import config
 
 from models.dqn_3d import DQN_3D
 
+import numpy as np
+
 import matplotlib.pyplot as plt
 import torch
 import psutil
@@ -55,6 +57,12 @@ fig2, (ax2) = plt.subplots(1, constrained_layout=True)
 fig3, (ax3) = plt.subplots(1, constrained_layout=True)
 fig4, (ax4) = plt.subplots(1, constrained_layout=True)
 
+rewards_total = []
+loss_total = []
+epsilon_total = []
+num_steps_total = []
+lr_total = []
+
 
 def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     ax1.set_title('Rewards Over Episodes')
@@ -81,6 +89,16 @@ def plot(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
     fig2.savefig("results/plt2.png")
     fig3.savefig("results/plt3.png")
     fig4.savefig("results/plt4.png")
+
+    rewards_total.append(ep_reward)
+    loss_total.append(ep_loss)
+    num_steps_total.append(num_steps)
+    epsilon_total.append(epsilon)
+    lr_total.append(lr)
+
+    if episode % 100 == 0:
+        print("SAVING DATA")
+        np.savetxt("results/data.txt", np.array([rewards_total, loss_total, num_steps_total, epsilon_total, lr_total]))
 
 
 def save(agent, epoch, episode, ep_reward, ep_loss, epsilon, num_steps, lr):
