@@ -58,7 +58,7 @@ class DQN_Agent():
             if p.requires_grad == True:
                 parameters_to_update.append(p)
 
-        self.optimizer = optim.Adam(parameters_to_update, lr=0.1)  # optim.RMSprop(parameters_to_update)
+        self.optimizer = optim.Adam(parameters_to_update, lr=0.001)  # optim.RMSprop(parameters_to_update)
         self.scheduler=ExponentialLR(self.optimizer,gamma=.99)
         #
 
@@ -172,6 +172,45 @@ class DQN_Agent():
 
         return running_loss
 
+    def test(self, env, filename="test_results", num_episodes=30, max_episode_time=3000):
+        rewards_acc=[]
+        num_steps_acc=[]
+        print("beginning test")
+        for i in range(num_episodes):
+            env.reset()
+            num_steps = 0
+            rewards=0
+
+            init_state = self.get_screen()
+            screen_stack = deque([init_state] * self.config['FRAME_STACK'], maxlen=self.config['FRAME_STACK'])
+            state = torch.cat(list(screen_stack), dim=1)
+
+            while True:
+                done = False
+                # pick an action
+                action = self.act(state,deterministic=True)
+
+                # do the action
+                for _ in range(self.config["FRAME_SKIP"]):
+                    num_steps += 1
+                    next_state, reward, done, _ = env.step(self.config["ACTION_SPACE"][action.item()])
+                    #video.append_data(self.env.render(mode="rgb_array"))
+                    rewards+=reward
+                    if done:
+                        break
+
+                # generate next state stack
+                screen_stack.append(self.get_screen())
+                #video.append_data(env.render(mode="rgb_array"))
+                next_state = torch.cat(list(screen_stack), dim=1) if not done else None
+                state = next_state
+
+                if done or num_steps > max_episode_time:
+                    break
+            rewards_acc.append(rewards)
+            num_steps_acc.append(num_steps)
+        return np.array(rewards_acc),np.array(num_steps_acc)
+
     # main training loop, resets epsilon each time you run it, so only run it once
     def train(self, episodes_per_epoch=None, number_of_epochs=None, callbacks=[], render=False):
         # reset epsilon
@@ -197,8 +236,9 @@ class DQN_Agent():
                 ep_loss = 0
 
                 negative_reward_count = 0
-
+                
                 while True:
+                    done=False
                     if render == True:
                         plt.imshow(self.get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation='none')
                         plt.draw()

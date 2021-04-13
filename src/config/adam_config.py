@@ -11,9 +11,5 @@ config = {
     "LEARNING_RATE": 0.001, #alpha learning rate initial
     "EPSILON_DECAY": 0.9999,  # rate at which epsilon decays
     "TARGET_UPDATE_INTERVAL": 10,  # interval at which to update target Q,
-    "ACTION_SPACE": list({"turn_left": [-1, .5, 0], "turn_right": [1, .5, 0], "go": [0, 1, 0],"go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 1],
-                          "brake_left": [-1, 0, 1], "brake_right": [1, 0, 1], "slight_turn_left": [-.3, .15, 0],
-                          "slight_turn_right": [.3, .15, 0], "slight_go": [0, .3, 0], "slight_go_left": [-.3, .3, 0],
-                          "slight_go_right": [.3, .3, 0], "slight_brake": [0, 0, .3], "slight_brake_left": [-.3, 0, .3],
-                          "slight_brake_right": [.3, 0, .3]}.values())  # action space [direction, throttle, brake]
+    "ACTION_SPACE": list({"turn_left": [-1, 1, .2], "turn_right": [1, 1, 0.2], "go": [0, 1, 0],"go_left": [-1, 1, 0], "go_right": [1, 1, 0], "brake": [0, 0, 0.2],"brake_left": [-1, 0, .2], "brake_right": [1, 0, 0.2]}.values())  # action space [direction, throttle, brake]
 }

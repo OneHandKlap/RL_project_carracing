@@ -14,11 +14,12 @@ def generate_policy_video(agent, env, filename="rl_model", num_episodes=1, max_e
             screen_stack = deque([init_state] * agent.config['FRAME_STACK'], maxlen=agent.config['FRAME_STACK'])
             state = torch.cat(list(screen_stack), dim=1)
 
-            done = False
+            
 
             num_steps = 0
 
             while True:
+                done = False
                 # pick an action
                 action = agent.act(state,deterministic=True)
 
