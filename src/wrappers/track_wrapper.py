@@ -70,7 +70,7 @@ def render_mini(self, mode="human"):
 
     self.car.draw(self.viewer, mode != "state_pixels")
     translate_indicator = rendering.Transform(translation=self.car.hull.position)
-    self.viewer.draw_circle(50, 100, True).add_attr(translate_indicator)
+    self.viewer.draw_circle(75, 75, True, color=(0, 0, 0.8)).add_attr(translate_indicator)
 
     arr = None
     win = self.viewer.window
@@ -127,15 +127,25 @@ def syncReset(envs):
         e.reset()
 
 
+def seed_uniform(a, b, seed):
+    np.random.seed(seed)
+    return np.random.randint(a*100, b*100)/100
+
+
+class PseudoRand():
+    def __init__(self):
+        self.uniform = None
+
+
 class TrackMini(gym.Wrapper):
     def __init__(self, create_env, seed):
         env = create_env()
         mini = create_env()
         super().__init__(env)
-        env.seed(seed)
-        mini.seed(seed)
-        #print(env.np_random.uniform(0, 3))
-        #print(mini.np_random.uniform(0, 3))
+        env.np_random = PseudoRand()
+        mini.np_random = PseudoRand()
+        env.np_random.uniform = lambda a, b: seed_uniform(a, b, seed)
+        mini.np_random.uniform = lambda a, b: seed_uniform(a, b, seed)
         mini.render = lambda mode="human": render_mini(mini, mode)
         self.env = env
         self.mini = mini

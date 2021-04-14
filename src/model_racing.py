@@ -29,9 +29,9 @@ seed = 42
 
 env = MemoryWrapper(lambda: TrackMini(lambda: gym.make("CarRacing-v0").unwrapped, seed))
 
-models = [("basic2", DQN_Basic), ("deep", DQN_Deep), ("deep2", DQN_Deep2)]
+models = [("basic1", DQN_Basic, "10_100"), ("basic2", DQN_Basic, "20_100"), ("deep", DQN_Deep, "10_100"), ("deep2", DQN_Deep2, "16_100")]
 
-for name, model_class in models:
+for name, model_class, weights in models:
     agent = DQN_Agent(env, model_class, config)
-    agent.load(f"./src/models/pretrained/{name}/rl_model_weights_20_100.pth")
-    generate_policy_video(agent, env, filename=f"results/race_{seed}_{name}")
+    agent.load(f"./src/models/pretrained/{name}/rl_model_weights_{weights}.pth")
+    generate_policy_video(agent, env, filename=f"results/race_{seed}_{name}", minimap=True, max_episode_time=5000)

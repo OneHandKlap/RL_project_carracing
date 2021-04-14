@@ -34,7 +34,9 @@ class DQN_Basic(nn.Module):
         return self.head(x)
 
 
+'''
 x = torch.randn(128, 9, 40, 60)
 model = DQN_Basic(60, 40, 3, 16)
 model(x)
 torch.onnx.export(model, x, "dqn_basic.onnx", input_names=['input'], output_names=['output'], do_constant_folding=True)
+'''
