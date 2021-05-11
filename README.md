@@ -1,7 +1,8 @@
 # CPS824-Project
 ## Crashing now so we don't crash later. Reinforcement Learning and self driving cars.
 
-## Check out a compilation gif of our best model [Here!](deepq.gif)
+<img src="deepq.gif" alt="gif"/>
+
 ## Check out our Summary Video [Here!](https://www.youtube.com/watch?v=YS-fcZ05Z9Y)
 ## Check out our Project Report [Here!](project_report.pdf)
 
